@@ -100,14 +100,15 @@
             <strong>URL de Webhook para Meta:</strong><br>
             <code id="webhookUrlDisplay" style="user-select: all; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 6px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; display: inline-block; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">http://localhost:3006/webhook</code>
           </div>
-          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;">
-            <div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
               <i class="fa-solid fa-stopwatch" style="color: var(--neon-yellow);"></i>
-              <strong>Sesión Temporal:</strong> Autodestrucción en:
+              <strong>Sesión:</strong> 
+              <span id="sessionTimer" style="background: rgba(255, 193, 7, 0.1); color: var(--neon-yellow); font-weight: 800; font-family: 'JetBrains Mono', monospace; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 193, 7, 0.3);">--:--</span>
             </div>
-            <div id="sessionTimer" style="background: rgba(255, 193, 7, 0.1); color: var(--neon-yellow); font-weight: 800; font-family: 'JetBrains Mono', monospace; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 193, 7, 0.3);">
-              --:--
-            </div>
+            <button id="btnClearConfig" class="btn btn-secondary btn-xs" style="border-radius: 999px; padding: 6px 12px; font-size: 0.78rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--neon-red); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 700; transition: all 0.2s;" type="button">
+              <i class="fa-solid fa-trash-can"></i> Limpiar Sesión
+            </button>
           </div>
         </div>
         <div class="input-group">

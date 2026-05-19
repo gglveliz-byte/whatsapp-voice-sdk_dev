@@ -129,6 +129,42 @@ function setupSocketHandlers(socketIoInstance) {
       }
     });
 
+    socket.on('clear-config', async (ack) => {
+      console.log('[SDK Socket] 📥 clear-config received from', socket.id);
+      try {
+        const current = await db.getConfig();
+        // Apagar llamadas en Meta si estaban habilitadas
+        if (current.phoneNumberId && current.metaAccessToken) {
+          try {
+            await whatsappCallManager.setCallingEnabled(current.phoneNumberId, current.metaAccessToken, false);
+          } catch (err) {
+            console.warn('[SDK Socket] Advertencia al deshabilitar llamadas en Meta:', err.message);
+          }
+        }
+
+        const success = await db.saveConfig({
+          metaAccessToken: '',
+          phoneNumberId: '',
+          wabaId: '',
+          metaVerifyToken: 'whatsapp_voice_sdk_verify_token',
+          geminiApiKey: ''
+        });
+
+        if (success) {
+          sendSandboxLog('CONFIG', '⚙️ Base de Datos: Credenciales destruidas (Sesión Cerrada).');
+          socket.emit('config-cleared', { success: true });
+          if (typeof ack === 'function') ack({ success: true });
+        } else {
+          socket.emit('config-cleared', { success: false });
+          if (typeof ack === 'function') ack({ success: false, error: 'clear_failed' });
+        }
+      } catch (clearErr) {
+        console.error('[SDK Socket] ❌ CRITICAL: clear-config handler crashed:', clearErr.message);
+        socket.emit('config-cleared', { success: false });
+        if (typeof ack === 'function') ack({ success: false, error: clearErr.message });
+      }
+    });
+
     socket.on('disconnect', () => {
       activeConnections.delete(socket);
     });
@@ -168,6 +204,37 @@ router.post('/config', async (req, res) => {
     res.json({ success: true, config: updated });
   } else {
     res.status(500).json({ success: false, error: 'No se pudo guardar la configuración.' });
+  }
+});
+
+router.post('/config/clear', async (req, res) => {
+  try {
+    const current = await db.getConfig();
+    // Apagar llamadas en Meta si estaban habilitadas
+    if (current.phoneNumberId && current.metaAccessToken) {
+      try {
+        await whatsappCallManager.setCallingEnabled(current.phoneNumberId, current.metaAccessToken, false);
+      } catch (err) {
+        console.warn('[Server REST] Advertencia al deshabilitar llamadas en Meta:', err.message);
+      }
+    }
+
+    const success = await db.saveConfig({
+      metaAccessToken: '',
+      phoneNumberId: '',
+      wabaId: '',
+      metaVerifyToken: 'whatsapp_voice_sdk_verify_token',
+      geminiApiKey: ''
+    });
+
+    if (success) {
+      sendSandboxLog('CONFIG', '⚙️ API REST: Credenciales destruidas (Sesión Cerrada de forma segura).');
+      res.json({ success: true });
+    } else {
+      res.status(500).json({ success: false, error: 'No se pudo purgar la configuración.' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

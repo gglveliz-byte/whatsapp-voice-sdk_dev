@@ -96,6 +96,22 @@ async function handleIncomingCall({ callId, offerSdp, phoneNumberId, accessToken
             const waiters = callState.connectionWaiters.splice(0);
             waiters.forEach(resolve => resolve(false));
             callState.active = false;
+
+            // Cierre explícito de la PeerConnection nativa para evitar fugas de puertos UDP
+            try {
+                pc.close();
+            } catch (e) {
+                console.error(`[WhatsAppCallManager] Error al cerrar PeerConnection (${callId}):`, e.message);
+            }
+
+            // Liberación de memoria de los codificadores OpusScript (WASM/C++)
+            if (callState.decoder) {
+                try { callState.decoder.delete(); } catch (e) {}
+            }
+            if (callState.encoder) {
+                try { callState.encoder.delete(); } catch (e) {}
+            }
+
             activeCalls.delete(callId);
             if (onCallEnded) onCallEnded();
         }
@@ -347,6 +363,15 @@ function endCall(callId) {
     try {
         callState.pc.close();
     } catch (e) { /* ignore */ }
+
+    // Liberación de memoria de los codificadores OpusScript (WASM/C++)
+    if (callState.decoder) {
+        try { callState.decoder.delete(); } catch (e) {}
+    }
+    if (callState.encoder) {
+        try { callState.encoder.delete(); } catch (e) {}
+    }
+
     activeCalls.delete(callId);
     console.log(`[WhatsAppCallManager] Call ended: ${callId}`);
 }

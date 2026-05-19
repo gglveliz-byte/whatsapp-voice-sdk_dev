@@ -212,6 +212,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Destruye la sesión en caliente en el backend (REST y WebSockets)
+  async function destroySessionOnServer() {
+    appendLog('CONFIG', '⚙️ Destruyendo credenciales persistentes en el servidor...');
+    
+    // 1. Resetear interfaz de LEDs
+    resetAllLeds();
+    
+    // 2. Limpiar inputs visuales
+    phoneIdInput.value = '';
+    wabaIdInput.value = '';
+    metaTokenInput.value = '';
+    geminiKeyInput.value = '';
+    
+    // 3. Resetear temporizador
+    clearInterval(sessionInterval);
+    const timerDisplay = document.getElementById('sessionTimer');
+    if (timerDisplay) timerDisplay.textContent = '--:--';
+    
+    // 4. Intentar Socket.io primero
+    let socketCleared = false;
+    try {
+      socket.emit('clear-config', (res) => {
+        if (res && res.success) {
+          socketCleared = true;
+          appendLog('CONFIG', '🟢 Sesión destruida con éxito vía WebSockets.');
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    // 5. Intentar por HTTP REST en cascada
+    setTimeout(async () => {
+      if (socketCleared) return;
+      const endpoints = [`${apiBaseUrl}/sdk-api/config/clear`, `${apiBaseUrl}/api/config/clear`];
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.success) {
+            appendLog('CONFIG', '🟢 Sesión destruida con éxito vía API REST (Fallback).');
+            return;
+          }
+        } catch (error) {
+          // ignore
+        }
+      }
+      appendLog('WARNING', '⚠️ No se pudo confirmar la destrucción remota en el backend REST, pero la interfaz local ha sido purgada.');
+    }, 1500);
+  }
+
+  // Enlace del botón de limpieza manual de sesión
+  const btnClearConfig = document.getElementById('btnClearConfig');
+  if (btnClearConfig) {
+    btnClearConfig.addEventListener('click', () => {
+      const confirmClear = confirm('¿Estás seguro de que deseas destruir las credenciales del servidor y cerrar la sesión?');
+      if (confirmClear) {
+        destroySessionOnServer();
+        alert('Sesión destruida y credenciales borradas del servidor.');
+      }
+    });
+  }
+
   // Temporizador de Sesión Segura (30 Minutos)
   let sessionInterval;
   function startSessionTimer() {
@@ -230,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInterval(sessionInterval);
         timerDisplay.textContent = "00:00";
         appendLog('WARNING', '⚠️ Sesión expirada. Por seguridad las credenciales se han destruido en el servidor.');
+        destroySessionOnServer();
       }
       secondsLeft--;
     }
