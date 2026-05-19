@@ -69,6 +69,9 @@
           <a href="desarrolladores.html" class="back-landing-btn">
             <i class="fa-solid fa-chevron-left"></i> SDK Developers
           </a>
+          <a href="index.html" class="back-landing-btn">
+            <i class="fa-solid fa-chevron-left"></i> Landing B2B
+          </a>
         </div>
         <h1 style="font-size: 2.2rem; text-align: left; margin: 0; letter-spacing: -0.8px;">Consola de Voz y <span>Depuración</span></h1>
         <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">
@@ -95,7 +98,7 @@
           <div style="margin-bottom: 8px;">
             <i class="fa-solid fa-link" style="color: var(--accent-blue);"></i>
             <strong>URL de Webhook para Meta:</strong><br>
-            <code style="user-select: all; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 6px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; display: inline-block; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">https://neurochat-xtwp.onrender.com/api/v1/webhook/meta</code>
+            <code id="webhookUrlDisplay" style="user-select: all; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 6px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; display: inline-block; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">http://localhost:3006/webhook</code>
           </div>
           <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;">
             <div>
@@ -107,7 +110,6 @@
             </div>
           </div>
         </div>
-        
         <div class="input-group">
           <label for="phoneId">Phone Number ID <span class="text-red">*</span></label>
           <div class="input-wrapper">

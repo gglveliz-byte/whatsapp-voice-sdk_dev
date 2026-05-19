@@ -14,19 +14,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const metaVerifyInput = document.getElementById('metaVerify');
   const geminiKeyInput = document.getElementById('geminiKey');
   const terminalBody = document.getElementById('terminalBody');
+  const webhookUrlDisplay = document.getElementById('webhookUrlDisplay');
   
   // LEDs indicadores
   const ledMeta = document.getElementById('ledMeta');
   const ledWebRTC = document.getElementById('ledWebRTC');
   const ledGemini = document.getElementById('ledGemini');
-  // URL dinámica del backend: Soporta local (localhost:3006) y producción (Render/VPS) de forma automática
-  const socketUrl = window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:3006';
+  // URL dinámica del backend: soporta standalone, integración en SaaS y override manual.
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const configuredBackendUrl = window.SDK_BACKEND_URL || document.body?.dataset?.backendUrl || '';
+  const socketUrl = configuredBackendUrl
+    || (isLocal
+      ? (window.location.port === '3000' || window.location.port === '3001' ? 'http://localhost:3001' : 'http://localhost:3006')
+      : window.location.origin);
+  const apiBaseUrl = socketUrl.replace(/\/+$/, '');
+  const standaloneWebhookUrl = `${apiBaseUrl}/webhook`;
+  const smartRouterWebhookUrl = `${apiBaseUrl}/api/v1/webhook/meta`;
+  // En NeuroChat embebido, Meta debe apuntar al webhook principal: ahi vive el
+  // smart router que decide si la llamada es demo SDK o SaaS Voice.
+  if (webhookUrlDisplay) webhookUrlDisplay.textContent = smartRouterWebhookUrl;
   appendLog('SYSTEM', `Conectando con el Servidor de Voz en ${socketUrl}...`);
 
   const socket = io(socketUrl, {
     reconnectionAttempts: 5,
-    timeout: 5000
+    timeout: 5000,
+    transports: ['websocket', 'polling']
   });
+  let pendingConfigSaveTimeout = null;
+  let pendingConfigSaveSettled = false;
 
   // Conexión Exitosa con el Servidor
   socket.on('connect', () => {
@@ -42,12 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Error de Conexión
   socket.on('connect_error', () => {
-    appendLog('ERROR', '⚠️ No se pudo conectar al servidor local. ¿Está iniciado el backend (`npm run dev`)?');
+    appendLog('ERROR', '⚠️ No se pudo conectar por Socket.IO. La consola intentará usar HTTP directo.');
     resetAllLeds();
   });
 
   // Carga de configuración existente desde la base de datos
   socket.on('current-config', (config) => {
+    applyConfig(config, 'socket');
+  });
+
+  // Carga defensiva por HTTP: evita que el dashboard quede colgado si el
+  // socket se conectó antes de que el SDK registrara sus handlers.
+  loadConfigViaHttp();
+
+  function applyConfig(config = {}, source = 'http') {
     if (config.phoneNumberId) phoneIdInput.value = config.phoneNumberId;
     if (config.wabaId) wabaIdInput.value = config.wabaId;
     if (config.metaAccessToken) metaTokenInput.value = config.metaAccessToken;
@@ -68,7 +91,25 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       appendLog('WARNING', '⚠️ Falta configurar la Gemini API Key para que el bot pueda responder.');
     }
-  });
+    appendLog('SYSTEM', `Configuración cargada vía ${source}.`);
+  }
+
+  async function loadConfigViaHttp() {
+    const endpoints = [`${apiBaseUrl}/sdk-api/config`, `${apiBaseUrl}/api/config`];
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, { method: 'GET' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        applyConfig(data.config || data, 'http');
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    appendLog('ERROR', `No se pudo cargar configuración por HTTP: ${lastError?.message || 'sin detalle'}`);
+  }
 
   // Recepción de Logs en Caliente de llamadas reales
   socket.on('sandbox-log', (log) => {
@@ -144,13 +185,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     appendLog('CONFIG', '⚙️ Sincronizando credenciales en caliente con la base de datos...');
 
-    // Emitimos el evento de actualización para que se guarde de forma permanente
-    socket.emit('update-config', {
+    const payload = {
       phoneNumberId,
       wabaId,
       metaAccessToken,
       metaVerifyToken,
       geminiApiKey
+    };
+
+    if (pendingConfigSaveTimeout) clearTimeout(pendingConfigSaveTimeout);
+    pendingConfigSaveSettled = false;
+
+    pendingConfigSaveTimeout = setTimeout(() => {
+      appendLog('WARNING', '⏳ La configuración sigue sin confirmación. Reintentando HTTP...');
+      saveConfigViaHttp(payload);
+    }, 10000);
+
+    // Guardado primario por HTTP: es determinista en el backend principal.
+    // El socket queda como canal extra para logs/ACK si está disponible.
+    saveConfigViaHttp(payload);
+
+    // Emitimos el evento de actualización para que se guarde de forma permanente.
+    // El ACK evita que la UI quede colgada si el backend SDK sí recibió el evento.
+    socket.emit('update-config', payload, (res) => {
+      handleConfigSaveResult(res);
     });
   });
 
@@ -182,6 +240,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Escucha de respuesta de confirmación de base de datos
   socket.on('config-updated', (res) => {
+    handleConfigSaveResult(res);
+  });
+
+  async function saveConfigViaHttp(payload) {
+    const endpoints = [`${apiBaseUrl}/sdk-api/config`, `${apiBaseUrl}/api/config`];
+    let lastError = null;
+    try {
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          handleConfigSaveResult({ success: data.success !== false });
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error('HTTP fallback failed');
+    } catch (error) {
+      if (pendingConfigSaveSettled) return;
+      appendLog('ERROR', `🔴 No se pudo guardar por socket ni HTTP. Verifica que el backend SDK esté iniciado o integrado. Detalle: ${error.message}`);
+      alert('No se pudo guardar la configuración. Revisa que el backend del SDK esté iniciado.');
+    }
+  }
+
+  function handleConfigSaveResult(res = {}) {
+    if (pendingConfigSaveSettled) return;
+    pendingConfigSaveSettled = true;
+    if (pendingConfigSaveTimeout) {
+      clearTimeout(pendingConfigSaveTimeout);
+      pendingConfigSaveTimeout = null;
+    }
+
     if (res.success) {
       appendLog('CONFIG', '🟢 Credenciales guardadas con éxito (Aisladas en Enrutador B2B).');
       setLedState(ledMeta, 'green');
@@ -191,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
       appendLog('ERROR', '🔴 Error al intentar guardar la configuración en la base de datos.');
       alert('Hubo un error al guardar la configuración en el servidor.');
     }
-  });
+  }
 
   // =========================================================================
   // 🛠️ FUNCIONES AUXILIARES DE RENDERIZADO
@@ -289,7 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       title: "5. Configurar URL de Devolución",
       content: `Edita tu Webhook de WhatsApp y completa las casillas con tus datos del servidor en caliente:<br>
-      • <b>URL de devolución de llamada</b>: <code>${socketUrl}/api/v1/webhook/meta</code><br>
+      • <b>URL standalone</b>: <code>${standaloneWebhookUrl}</code><br>
+      • <b>URL si lo montas dentro de un backend principal</b>: <code>${smartRouterWebhookUrl}</code><br>
       • <b>Token de verificación</b>: El token inventado que pusiste en el Dashboard.<br>
       <div style="margin-top: 8px; font-size: 0.85rem; color: #d97706; background: rgba(217, 119, 6, 0.1); padding: 8px; border-radius: 6px;">
         <i class="fa-solid fa-stopwatch"></i> <strong>Nota:</strong> Al guardar en el Dashboard, tienes <b>30 minutos exactos</b> para probar. Luego la sesión se destruye.
