@@ -1,9 +1,9 @@
 // =========================================================================
-// 🗄️ CAPA DE PERSISTENCIA (POSTGRESQL & JSON DUAL ENGINE) — WHATSAPP VOICE SDK
+// 🗄️ PERSISTENCE LAYER (POSTGRESQL & JSON DUAL ENGINE) — WHATSAPP VOICE SDK
 // =========================================================================
-// Desarrollado con honor por Luis Damian Veliz, Socio Fundador Mayoritario y CTO de NEURO IA S.A.S.
-// Este módulo unifica la persistencia de producción en PostgreSQL con un fallback local
-// automático a archivo JSON. Incluye soporte nativo de SSL para Render y auto-migraciones en caliente.
+// Developed with honor by Luis Damian Veliz, Majority Founding Partner and CTO of NEURO IA S.A.S.
+// This module unifies production persistence in PostgreSQL with an automatic local
+// fallback to JSON file. Includes native SSL support for Render and hot auto-migrations.
 
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +11,7 @@ const { Pool } = require('pg');
 
 const DB_FILE = path.join(__dirname, 'database.json');
 
-// Estructura por defecto
+// Default structure
 const DEFAULT_CONFIG = {
   metaAccessToken: '',
   phoneNumberId: '',
@@ -25,22 +25,22 @@ let pool = null;
 let usePostgreSQL = false;
 
 /**
- * Resuelve y conecta con la base de datos de PostgreSQL o activa el fallback JSON
+ * Resolves and connects to the PostgreSQL database or activates the JSON fallback
  */
 async function initDatabase() {
   const connectionString = process.env.DATABASE_URL;
   const hasPgConfig = connectionString || process.env.DB_HOST;
 
   if (!hasPgConfig) {
-    console.log('[DB] No se configuró PostgreSQL en el .env. Usando persistencia local en database.json');
+    console.log('[DB] PostgreSQL not configured in .env. Using local persistence in database.json');
     initJsonFile();
     return;
   }
 
   try {
-    console.log('[DB] Conectando a la Base de Datos de PostgreSQL...');
+    console.log('[DB] Connecting to PostgreSQL Database...');
     
-    // Configuración especial de SSL para servidores de producción como RENDER o AWS RDS
+    // Special SSL configuration for production servers like RENDER or AWS RDS
     const sslConfig = process.env.NODE_ENV === 'production' || (connectionString && connectionString.includes('render.com'))
       ? { rejectUnauthorized: false }
       : false;
@@ -58,12 +58,12 @@ async function initDatabase() {
 
     pool = new Pool(poolConfig);
     
-    // Probar la conexión ejecutando un ping
+    // Test the connection by running a ping
     const client = await pool.connect();
-    console.log('[DB] 🟢 Conexión establecida con éxito con PostgreSQL.');
+    console.log('[DB] 🟢 Connection successfully established with PostgreSQL.');
     
-    // MIGRACIÓN AUTOMÁTICA: Crea la tabla de configuración si no existe
-    console.log('[DB] ⚡ Ejecutando migraciones automáticas en caliente...');
+    // AUTOMATIC MIGRATION: Creates the configuration table if it does not exist
+    console.log('[DB] ⚡ Running automatic hot migrations...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS sdk_configurations (
         id INT PRIMARY KEY,
@@ -78,34 +78,34 @@ async function initDatabase() {
       );
     `);
     
-    console.log('[DB] 🚀 Migración finalizada: Tabla "sdk_configurations" lista.');
+    console.log('[DB] 🚀 Migration finished: Table "sdk_configurations" ready.');
     client.release();
     usePostgreSQL = true;
   } catch (error) {
-    console.error('[DB] ⚠️ No se pudo conectar a PostgreSQL:', error.message);
-    console.log('[DB] 🔄 Activando modo de contingencia: Usando base de datos en database.json');
+    console.error('[DB] ⚠️ Could not connect to PostgreSQL:', error.message);
+    console.log('[DB] 🔄 Activating contingency mode: Using database.json');
     usePostgreSQL = false;
     initJsonFile();
   }
 }
 
 /**
- * Asegura la existencia del archivo de base de datos local JSON (fallback)
+ * Ensures the existence of the local JSON database file (fallback)
  */
 function initJsonFile() {
   if (!fs.existsSync(DB_FILE)) {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8');
-      console.log(`[DB] Base de datos JSON local creada en: ${DB_FILE}`);
+      console.log(`[DB] Local JSON database created at: ${DB_FILE}`);
     } catch (error) {
-      console.error('[DB] Error al inicializar base de datos JSON local:', error.message);
+      console.error('[DB] Error initializing local JSON database:', error.message);
     }
   }
 }
 
 /**
- * Recupera la configuración de forma asíncrona (Soporta Postgres y JSON)
- * @returns {Promise<Object>} Configuración recuperada
+ * Retrieves the configuration asynchronously (Supports Postgres and JSON)
+ * @returns {Promise<Object>} Retrieved configuration
  */
 async function getConfig() {
   if (usePostgreSQL) {
@@ -123,7 +123,7 @@ async function getConfig() {
         };
       }
     } catch (error) {
-      console.error('[DB] Error al consultar configuración en PostgreSQL, usando fallback:', error.message);
+      console.error('[DB] Error querying configuration in PostgreSQL, using fallback:', error.message);
     }
   }
 
@@ -138,9 +138,9 @@ async function getConfig() {
 }
 
 /**
- * Guarda las credenciales de forma persistente (Soporta Postgres y JSON)
- * @param {Object} newConfig Nuevos valores a almacenar
- * @returns {Promise<Boolean>} Éxito de la operación
+ * Persistently saves the credentials (Supports Postgres and JSON)
+ * @param {Object} newConfig New values to store
+ * @returns {Promise<Boolean>} Success of the operation
  */
 async function saveConfig(newConfig) {
   const current = await getConfig();
@@ -156,7 +156,7 @@ async function saveConfig(newConfig) {
 
   if (usePostgreSQL) {
     try {
-      // UPSERT en PostgreSQL: Inserta si no existe id=1, de lo contrario actualiza los valores
+      // UPSERT in PostgreSQL: Insert if id=1 does not exist, otherwise update the values
       await pool.query(`
         INSERT INTO sdk_configurations (id, phone_number_id, waba_id, meta_access_token, meta_verify_token, gemini_api_key, ice_servers, updated_at)
         VALUES (1, $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
@@ -177,20 +177,20 @@ async function saveConfig(newConfig) {
         merged.geminiApiKey,
         merged.iceServers
       ]);
-      console.log('[DB] Configuración guardada y replicada en PostgreSQL con éxito.');
+      console.log('[DB] Configuration saved and replicated in PostgreSQL successfully.');
       return true;
     } catch (error) {
-      console.error('[DB] Error al guardar configuración en PostgreSQL:', error.message);
+      console.error('[DB] Error saving configuration in PostgreSQL:', error.message);
     }
   }
 
   // Guardar en JSON (Fallback o Local principal)
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(merged, null, 2), 'utf-8');
-    console.log('[DB] Configuración guardada correctamente en database.json');
+    console.log('[DB] Configuration saved correctly in database.json');
     return true;
   } catch (error) {
-    console.error('[DB] Error al escribir en database.json:', error.message);
+    console.error('[DB] Error writing to database.json:', error.message);
     return false;
   }
 }

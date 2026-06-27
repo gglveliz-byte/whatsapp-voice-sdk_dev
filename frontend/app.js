@@ -28,12 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ? (window.location.port === '3000' || window.location.port === '3001' ? 'http://localhost:3001' : 'http://localhost:3006')
       : window.location.origin);
   const apiBaseUrl = socketUrl.replace(/\/+$/, '');
-  const standaloneWebhookUrl = `${apiBaseUrl}/webhook`;
-  const smartRouterWebhookUrl = `${apiBaseUrl}/api/v1/webhook/meta`;
-  // En NeuroChat embebido, Meta debe apuntar al webhook principal: ahi vive el
-  // smart router que decide si la llamada es demo SDK o SaaS Voice.
-  if (webhookUrlDisplay) webhookUrlDisplay.textContent = smartRouterWebhookUrl;
-  appendLog('SYSTEM', `Conectando con el Servidor de Voz en ${socketUrl}...`);
+  const webhookPath = '/api/webhook';
+  const standaloneWebhookUrl = `${apiBaseUrl}${webhookPath}`;
+  if (webhookUrlDisplay) webhookUrlDisplay.textContent = standaloneWebhookUrl;
+  appendLog('SYSTEM', __('log.connecting', { url: socketUrl }));
 
   const socket = io(socketUrl, {
     reconnectionAttempts: 5,
@@ -45,19 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Conexión Exitosa con el Servidor
   socket.on('connect', () => {
-    appendLog('SYSTEM', '🟢 Conexión activa con el backend. Cargando datos de persistencia...');
+    appendLog('SYSTEM', __('log.connected'));
     setLedState(ledMeta, 'yellow');
   });
 
   // Pérdida de Conexión
   socket.on('disconnect', () => {
-    appendLog('ERROR', '🔴 Se perdió la conexión con el servidor backend.');
+    appendLog('ERROR', __('log.disconnected'));
     resetAllLeds();
   });
 
   // Error de Conexión
   socket.on('connect_error', () => {
-    appendLog('ERROR', '⚠️ No se pudo conectar por Socket.IO. La consola intentará usar HTTP directo.');
+    appendLog('ERROR', __('log.connect_error'));
     resetAllLeds();
   });
 
@@ -80,18 +78,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ajustar luces LED en base a los datos cargados
     if (config.phoneNumberId && config.metaAccessToken) {
       setLedState(ledMeta, 'green');
-      appendLog('SYSTEM', '✅ Credenciales de Meta cargadas correctamente desde la base de datos.');
+      appendLog('SYSTEM', __('log.meta_loaded'));
     } else {
       setLedState(ledMeta, 'yellow');
-      appendLog('WARNING', '⚠️ Faltan credenciales de Meta (Phone Number ID o Access Token) en la base de datos.');
+      appendLog('WARNING', __('log.meta_missing'));
     }
 
     if (config.geminiApiKey) {
-      appendLog('SYSTEM', '🧠 API Key de Gemini cargada correctamente desde la base de datos.');
+      appendLog('SYSTEM', __('log.gemini_loaded'));
     } else {
-      appendLog('WARNING', '⚠️ Falta configurar la Gemini API Key para que el bot pueda responder.');
+      appendLog('WARNING', __('log.gemini_missing'));
     }
-    appendLog('SYSTEM', `Configuración cargada vía ${source}.`);
+    appendLog('SYSTEM', __('log.config_loaded', { source }));
   }
 
   async function loadConfigViaHttp() {
@@ -108,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastError = error;
       }
     }
-    appendLog('ERROR', `No se pudo cargar configuración por HTTP: ${lastError?.message || 'sin detalle'}`);
+    appendLog('ERROR', __('log.http_error', { error: lastError?.message || 'sin detalle' }));
   }
 
   // Recepción de Logs en Caliente de llamadas reales
@@ -120,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('webrtc-state', (data) => {
     if (data.state === 'connected' || data.state === 'stable') {
       setLedState(ledWebRTC, 'green');
-      appendLog('WEBRTC', '🟢 Conexión WebRTC completamente establecida y activa.');
+      appendLog('WEBRTC', __('log.webrtc_connected'));
     } else if (data.state === 'connecting') {
       setLedState(ledWebRTC, 'yellow');
     } else {
@@ -132,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('gemini-state', (data) => {
     if (data.state === 'connected') {
       setLedState(ledGemini, 'green');
-      appendLog('GEMINI', '🧠 Canal de voz activo en directo con Gemini Live.');
+      appendLog('GEMINI', __('log.gemini_connected'));
     } else if (data.state === 'connecting') {
       setLedState(ledGemini, 'yellow');
     } else {
@@ -143,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Recepción de llamadas en vivo parpadeando luces
   socket.on('call-state', (data) => {
     if (data.state === 'incoming') {
-      appendLog('WHATSAPP', `🔔 ¡Llamada real detectada! Emisor: ${data.caller}`);
+      appendLog('WHATSAPP', __('log.call_incoming', { caller: data.caller }));
       
       // Efecto visual: parpadeo rápido de LEDs al recibir llamada
       let blink = true;
@@ -157,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setLedState(ledWebRTC, 'yellow');
       }, 3000);
     } else if (data.state === 'terminated') {
-      appendLog('WHATSAPP', `📴 Llamada finalizada por el emisor.`);
+      appendLog('WHATSAPP', __('log.call_terminated'));
       resetAllLeds();
       
       // Re-establecemos Meta en verde ya que las credenciales siguen cargadas
@@ -178,12 +176,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiApiKey = geminiKeyInput.value.trim();
 
     if (!phoneNumberId || !metaAccessToken || !geminiApiKey) {
-      appendLog('WARNING', '⚠️ Por favor, ingresa los campos requeridos (*) antes de guardar.');
-      alert('Por favor, completa los campos requeridos (*): Phone Number ID, Access Token y Gemini API Key.');
+      appendLog('WARNING', __('log.fields_required'));
+      alert(__('log.fields_alert'));
       return;
     }
 
-    appendLog('CONFIG', '⚙️ Sincronizando credenciales en caliente con la base de datos...');
+    appendLog('CONFIG', __('log.saving'));
 
     const payload = {
       phoneNumberId,
@@ -197,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingConfigSaveSettled = false;
 
     pendingConfigSaveTimeout = setTimeout(() => {
-      appendLog('WARNING', '⏳ La configuración sigue sin confirmación. Reintentando HTTP...');
+      appendLog('WARNING', __('log.http_retry'));
       saveConfigViaHttp(payload);
     }, 10000);
 
@@ -214,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Destruye la sesión en caliente en el backend (REST y WebSockets)
   async function destroySessionOnServer() {
-    appendLog('CONFIG', '⚙️ Destruyendo credenciales persistentes en el servidor...');
+    appendLog('CONFIG', __('log.destroying'));
     
     // 1. Resetear interfaz de LEDs
     resetAllLeds();
@@ -236,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
       socket.emit('clear-config', (res) => {
         if (res && res.success) {
           socketCleared = true;
-          appendLog('CONFIG', '🟢 Sesión destruida con éxito vía WebSockets.');
+          appendLog('CONFIG', __('log.destroyed_socket'));
         }
       });
     } catch (e) {
@@ -255,14 +253,14 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           const data = await response.json().catch(() => ({}));
           if (response.ok && data.success) {
-            appendLog('CONFIG', '🟢 Sesión destruida con éxito vía API REST (Fallback).');
+            appendLog('CONFIG', __('log.destroyed_http'));
             return;
           }
         } catch (error) {
           // ignore
         }
       }
-      appendLog('WARNING', '⚠️ No se pudo confirmar la destrucción remota en el backend REST, pero la interfaz local ha sido purgada.');
+      appendLog('WARNING', __('log.destroy_warning'));
     }, 1500);
   }
 
@@ -270,13 +268,120 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnClearConfig = document.getElementById('btnClearConfig');
   if (btnClearConfig) {
     btnClearConfig.addEventListener('click', () => {
-      const confirmClear = confirm('¿Estás seguro de que deseas destruir las credenciales del servidor y cerrar la sesión?');
+      const confirmClear = confirm(__('log.confirm_destroy'));
       if (confirmClear) {
         destroySessionOnServer();
-        alert('Sesión destruida y credenciales borradas del servidor.');
+      alert(__('log.destroy_alert'));
       }
     });
   }
+
+  // =========================================================================
+  // 📞 LLAMADA SALIENTE (Business-Initiated Call)
+  
+
+
+  // =========================================================================
+  const btnOutboundCall = document.getElementById('btnOutboundCall');
+  const btnEndOutboundCall = document.getElementById('btnEndOutboundCall');
+  const countryCodeSelect = document.getElementById('countryCode');
+  const outboundPhoneInput = document.getElementById('outboundPhone');
+  const outboundStatus = document.getElementById('outboundStatus');
+  let currentOutboundCallId = null;
+
+  function setOutboundStatus(text, type) {
+    if (!outboundStatus) return;
+    const colors = { idle: 'var(--text-muted)', ringing: 'var(--neon-yellow)', connected: 'var(--neon-green)', failed: 'var(--neon-red)', ended: 'var(--text-muted)', initiated: 'var(--accent-blue)' };
+    const color = colors[type] || 'var(--text-muted)';
+    const icons = { idle: 'fa-circle', ringing: 'fa-phone', connected: 'fa-circle-check', failed: 'fa-circle-xmark', ended: 'fa-circle', initiated: 'fa-spinner fa-spin' };
+    const icon = icons[type] || 'fa-circle';
+    outboundStatus.innerHTML = '<i class="fa-solid ' + icon + '" style="font-size:0.5rem;color:' + color + ';margin-right:6px;vertical-align:middle;"></i><span style="color:' + color + ';">' + text + '</span>';
+  }
+
+  if (btnOutboundCall && outboundPhoneInput && countryCodeSelect) {
+    btnOutboundCall.addEventListener('click', () => {
+      const code = countryCodeSelect.value.trim();
+      const number = outboundPhoneInput.value.trim();
+      if (!number) {
+        alert(__('log.fields_alert'));
+        outboundPhoneInput.focus();
+        return;
+      }
+      const fullNumber = code + number;
+      appendLog('SYSTEM', __('log.call_started', { number: fullNumber }));
+      setOutboundStatus(__('call.calling', { number: fullNumber }), 'initiated');
+      btnOutboundCall.disabled = true;
+      btnOutboundCall.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + __('call.call_btn');
+
+      socket.emit('start-outbound-call', { to: fullNumber }, (res) => {
+        btnOutboundCall.disabled = false;
+        btnOutboundCall.innerHTML = '<i class="fa-solid fa-phone"></i> ' + __('call.call_btn');
+        if (res && res.success) {
+          currentOutboundCallId = res.callId;
+          appendLog('SYSTEM', __('log.call_started_ok', { id: res.callId }));
+          setOutboundStatus(__('call.initiated'), 'initiated');
+          btnEndOutboundCall.style.display = 'flex';
+          btnOutboundCall.style.display = 'none';
+          document.querySelector('.outbound-call-section')?.classList.add('call-active');
+        } else {
+          appendLog('ERROR', __('log.call_start_error', { error: res?.error || 'sin detalle' }));
+          setOutboundStatus(__('call.failed', { error: res?.error || 'desconocido' }), 'failed');
+        }
+      });
+    });
+  }
+
+  if (btnEndOutboundCall) {
+    btnEndOutboundCall.addEventListener('click', () => {
+      if (!currentOutboundCallId) return;
+      appendLog('WHATSAPP', __('log.call_ending'));
+      socket.emit('end-outbound-call', { callId: currentOutboundCallId }, (res) => {
+        appendLog('SYSTEM', __('log.call_ended'));
+      });
+      // Also try HTTP endpoint as fallback
+      fetch(apiBaseUrl + '/api/call/' + currentOutboundCallId + '/end', { method: 'POST' }).catch(() => {});
+      resetOutboundUI();
+    });
+  }
+
+  function resetOutboundUI() {
+    currentOutboundCallId = null;
+    if (btnOutboundCall) { btnOutboundCall.style.display = 'flex'; btnOutboundCall.disabled = false; btnOutboundCall.innerHTML = '<i class="fa-solid fa-phone"></i> ' + __('call.call_btn'); }
+    if (btnEndOutboundCall) btnEndOutboundCall.style.display = 'none';
+    setOutboundStatus(__('call.ready'), 'idle');
+    document.querySelector('.outbound-call-section')?.classList.remove('call-active');
+  }
+
+  // Listen for outbound call state updates from the server
+  socket.on('outbound-state', (data) => {
+    if (data.state === 'initiated') {
+      setOutboundStatus(__('call.initiated'), 'initiated');
+    } else if (data.state === 'ringing') {
+      setOutboundStatus(__('call.ringing'), 'ringing');
+      appendLog('WHATSAPP', __('call.ringing'));
+    } else if (data.state === 'connected') {
+      currentOutboundCallId = data.callId || currentOutboundCallId;
+      appendLog('SYSTEM', __('call.connected'));
+      setOutboundStatus(__('call.connected'), 'connected');
+      if (btnEndOutboundCall) btnEndOutboundCall.style.display = 'flex';
+      if (btnOutboundCall) btnOutboundCall.style.display = 'none';
+    } else if (data.state === 'accepted') {
+      appendLog('WHATSAPP', __('call.connected'));
+      setOutboundStatus(__('call.connected'), 'connected');
+    } else if (data.state === 'rejected') {
+      appendLog('WHATSAPP', __('call.rejected'));
+      setOutboundStatus(__('call.rejected'), 'failed');
+      resetOutboundUI();
+    } else if (data.state === 'ended') {
+      appendLog('WHATSAPP', __('call.ended'));
+      setOutboundStatus(__('call.ended'), 'ended');
+      resetOutboundUI();
+    } else if (data.state === 'failed') {
+      appendLog('ERROR', __('call.failed', { error: data.error || 'error' }));
+      setOutboundStatus(__('call.failed', { error: data.error || 'error' }), 'failed');
+      resetOutboundUI();
+    }
+  });
 
   // Temporizador de Sesión Segura (30 Minutos)
   let sessionInterval;
@@ -295,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (secondsLeft <= 0) {
         clearInterval(sessionInterval);
         timerDisplay.textContent = "00:00";
-        appendLog('WARNING', '⚠️ Sesión expirada. Por seguridad las credenciales se han destruido en el servidor.');
+        appendLog('WARNING', __('log.session_expired'));
         destroySessionOnServer();
       }
       secondsLeft--;
@@ -334,8 +439,8 @@ document.addEventListener('DOMContentLoaded', () => {
       throw lastError || new Error('HTTP fallback failed');
     } catch (error) {
       if (pendingConfigSaveSettled) return;
-      appendLog('ERROR', `🔴 No se pudo guardar por socket ni HTTP. Verifica que el backend SDK esté iniciado o integrado. Detalle: ${error.message}`);
-      alert('No se pudo guardar la configuración. Revisa que el backend del SDK esté iniciado.');
+      appendLog('ERROR', __('log.save_error') + ' ' + error.message);
+      alert(__('log.save_error_alert'));
     }
   }
 
@@ -348,13 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (res.success) {
-      appendLog('CONFIG', '🟢 Credenciales guardadas con éxito (Aisladas en Enrutador B2B).');
+      appendLog('CONFIG', __('log.saved_ok'));
       setLedState(ledMeta, 'green');
-      startSessionTimer(); // Inicia la cuenta regresiva visible
-      alert('¡Credenciales seguras guardadas! La sesión durará 30 minutos.');
+      startSessionTimer();
+      alert(__('log.saved_alert'));
     } else {
-      appendLog('ERROR', '🔴 Error al intentar guardar la configuración en la base de datos.');
-      alert('Hubo un error al guardar la configuración en el servidor.');
+      appendLog('ERROR', __('log.save_error'));
+      alert(__('log.save_error_alert'));
     }
   }
 
@@ -454,8 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       title: "5. Configurar URL de Devolución",
       content: `Edita tu Webhook de WhatsApp y completa las casillas con tus datos del servidor en caliente:<br>
-      • <b>URL standalone</b>: <code>${standaloneWebhookUrl}</code><br>
-      • <b>URL si lo montas dentro de un backend principal</b>: <code>${smartRouterWebhookUrl}</code><br>
+      • <b>URL del Webhook</b>: <code>${standaloneWebhookUrl}</code><br>
       • <b>Token de verificación</b>: El token inventado que pusiste en el Dashboard.<br>
       <div style="margin-top: 8px; font-size: 0.85rem; color: #d97706; background: rgba(217, 119, 6, 0.1); padding: 8px; border-radius: 6px;">
         <i class="fa-solid fa-stopwatch"></i> <strong>Nota:</strong> Al guardar en el Dashboard, tienes <b>30 minutos exactos</b> para probar. Luego la sesión se destruye.

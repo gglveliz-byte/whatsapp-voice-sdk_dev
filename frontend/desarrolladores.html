@@ -11,6 +11,9 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .lang-btn.active { opacity: 1 !important; box-shadow: 0 0 8px rgba(26,115,227,0.4); }
+  </style>
 </head>
 <body>
 
@@ -25,9 +28,13 @@
     <a href="index.html" class="nav-logo">
       <span>WhatsApp</span> Voice SDK
     </a>
-    <div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="display: flex; gap: 4px; font-size: 0.8rem; font-weight: 700;">
+        <button data-lang-btn="es" class="lang-btn" style="background:var(--accent-blue);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;opacity:0.5;transition:0.2s;">ES</button>
+        <button data-lang-btn="en" class="lang-btn" style="background:var(--accent-blue);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;opacity:0.5;transition:0.2s;">EN</button>
+      </div>
       <a href="dashboard.html" class="btn btn-secondary" style="padding: 10px 20px; font-size: 0.85rem; border-radius: 999px;">
-        <i class="fa-solid fa-gauge-high"></i> Consola
+        <i class="fa-solid fa-gauge-high"></i> <span data-i18n="nav.console">Consola</span>
       </a>
     </div>
   </nav>
@@ -37,15 +44,15 @@
     
     <!-- 1. HEADER HERO SECTION -->
     <header class="hero">
-      <div class="badge">🚀 MOTOR DE VOZ IA CON SOBERANÍA TECNOLÓGICA</div>
-      <h1>Experience liftoff with the <span>WhatsApp Voice SDK</span></h1>
-      <p class="subtitle">
+      <div class="badge" data-i18n="dev.badge">🚀 MOTOR DE VOZ IA CON SOBERANÍA TECNOLÓGICA</div>
+      <h1 data-i18n-html="true" data-i18n="dev.heading">Experience liftoff with the <span>WhatsApp Voice SDK</span></h1>
+      <p class="subtitle" data-i18n="dev.subtitle">
         Ahorra meses de desarrollo de código WebRTC complejo, Opus RTP streams y decodificaciones. 
         Te entregamos la única plantilla en Node.js ultra-documentada para conectar llamadas telefónicas de WhatsApp con Gemini Live en tiempo real.
       </p>
       <div class="hero-actions">
-        <a href="dashboard.html" class="btn btn-primary"><i class="fa-solid fa-gauge-high"></i> Consola de Voz</a>
-        <a href="#features" class="btn btn-secondary"><i class="fa-solid fa-circle-info"></i> Explorar Características</a>
+        <a href="dashboard.html" class="btn btn-primary"><i class="fa-solid fa-gauge-high"></i> <span data-i18n="nav.console">Consola de Voz</span></a>
+        <a href="#features" class="btn btn-secondary"><i class="fa-solid fa-circle-info"></i> <span data-i18n="dev.explore">Explorar Características</span></a>
       </div>
     </header>
 
@@ -54,26 +61,26 @@
       <div class="card-glow"></div>
       <div class="pricing-header">
         <div>
-          <h2>Adquiere la Licencia del Repositorio</h2>
-          <p>Llévate el código de producción completo y lanza agentes de voz en tu país hoy mismo.</p>
+          <h2 data-i18n="pricing.title">Adquiere la Licencia del Repositorio</h2>
+          <p data-i18n="pricing.desc">Llévate el código de producción completo y lanza agentes de voz en tu país hoy mismo.</p>
         </div>
         <div class="price-box">
-          <span class="amount" style="font-size: 1.6rem; color: var(--accent-blue); font-weight: 700; letter-spacing: -0.5px;">Contáctanos:</span>
+          <span class="amount" style="font-size: 1.6rem; color: var(--accent-blue); font-weight: 700; letter-spacing: -0.5px;" data-i18n="pricing.price">Contáctanos:</span>
         </div>
       </div>
       <div class="divider"></div>
       <div style="margin-bottom: 20px; padding: 12px; background: rgba(37, 211, 102, 0.08); border-radius: 8px; border: 1px dashed rgba(37, 211, 102, 0.3);">
-        <h4 style="color: #25d366; margin: 0 0 5px 0; font-size: 0.95rem;"><i class="fa-solid fa-box-open"></i> ¿Qué recibes al comprar?</h4>
-        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">Entregamos acceso directo al Repositorio Git para que clones <b>exactamente el mismo código</b> con el que acabas de hacer la prueba de conexión en la demo. Funcional al 100% <i>Out-of-the-Box</i>.</p>
+        <h4 style="color: #25d366; margin: 0 0 5px 0; font-size: 0.95rem;" data-i18n-html="true" data-i18n="pricing.what_you_get"><i class="fa-solid fa-box-open"></i> ¿Qué recibes al comprar?</h4>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;" data-i18n-html="true" data-i18n="pricing.get_desc">Entregamos acceso directo al Repositorio Git para que clones <b>exactamente el mismo código</b> con el que acabas de hacer la prueba de conexión en la demo. Funcional al 100% <i>Out-of-the-Box</i>.</p>
       </div>
       <ul class="features-list">
-        <li><i class="fa-solid fa-check text-green"></i> <b>Libertad Total de Modificación:</b> Adapta y escala la lógica a tu propio modelo de negocio.</li>
-        <li><i class="fa-solid fa-check text-green"></i> <b>Código WebRTC Completo:</b> Negociación SDP de WhatsApp Calls con node-datachannel.</li>
-        <li><i class="fa-solid fa-check text-green"></i> <b>Puente Gemini Live:</b> Audio WebSocket bidireccional fluido a 24kHz.</li>
-        <li><i class="fa-solid fa-check text-green"></i> <b>Base de Datos Persistente:</b> Capa de almacenamiento local o PostgreSQL.</li>
-        <li><i class="fa-solid fa-check text-green"></i> <b>Documentación en Español:</b> Explicado línea por línea para que lo integres en 10 minutos.</li>
+        <li data-i18n-html="true" data-i18n="pricing.feature1"><i class="fa-solid fa-check text-green"></i> <b>Libertad Total de Modificación:</b> Adapta y escala la lógica a tu propio modelo de negocio.</li>
+        <li data-i18n-html="true" data-i18n="pricing.feature2"><i class="fa-solid fa-check text-green"></i> <b>Código WebRTC Completo:</b> Negociación SDP de WhatsApp Calls con node-datachannel.</li>
+        <li data-i18n-html="true" data-i18n="pricing.feature3"><i class="fa-solid fa-check text-green"></i> <b>Puente Gemini Live:</b> Audio WebSocket bidireccional fluido a 24kHz.</li>
+        <li data-i18n-html="true" data-i18n="pricing.feature4"><i class="fa-solid fa-check text-green"></i> <b>Base de Datos Persistente:</b> Capa de almacenamiento local o PostgreSQL.</li>
+        <li data-i18n-html="true" data-i18n="pricing.feature5"><i class="fa-solid fa-check text-green"></i> <b>Documentación en Español:</b> Explicado línea por línea para que lo integres en 10 minutos.</li>
       </ul>
-      <a href="https://wa.me/593987865420" target="_blank" class="btn btn-cta btn-full btn-whatsapp-negotiate" style="border-radius: 999px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: #ffffff; border: none; font-weight: 800; display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.25); text-decoration: none; padding: 14px; transition: all 0.3s ease; cursor: pointer;">
+      <a href="https://wa.me/593987865420" target="_blank" class="btn btn-cta btn-full btn-whatsapp-negotiate" style="border-radius: 999px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: #ffffff; border: none; font-weight: 800; display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.25); text-decoration: none; padding: 14px; transition: all 0.3s ease; cursor: pointer;" data-i18n-html="true" data-i18n="pricing.contact">
         <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Contactar
       </a>
     </section>
@@ -81,56 +88,56 @@
     <!-- 3. DETALLE DE CARACTERÍSTICAS -->
     <section id="features" class="features-section">
       <div class="section-title">
-        <h2>🛠&nbsp; Especificaciones de Arquitectura</h2>
-        <p>Un kit diseñado para desarrolladores profesionales y startups que exigen código limpio y escalable.</p>
+        <h2 data-i18n-html="true" data-i18n="features.arch_title">🛠&nbsp; Especificaciones de Arquitectura</h2>
+        <p data-i18n="features.arch_desc">Un kit diseñado para desarrolladores profesionales y startups que exigen código limpio y escalable.</p>
       </div>
 
       <div class="features-grid">
         <div class="glass-card feat-card">
           <i class="fa-solid fa-shield-halved text-violet icon-large"></i>
-          <h3>Persistencia Segura</h3>
-          <p>Credenciales almacenadas de manera local. Listo para ser migrado a PostgreSQL o Prisma con un par de líneas.</p>
+          <h3 data-i18n="feat.persistence">Persistencia Segura</h3>
+          <p data-i18n="feat.persistence_desc">Credenciales almacenadas de manera local. Listo para ser migrado a PostgreSQL o Prisma con un par de líneas.</p>
         </div>
         <div class="glass-card feat-card">
           <i class="fa-solid fa-bolt text-violet icon-large"></i>
-          <h3>Baja Latencia</h3>
-          <p>Transcodificación en caliente de Opus RTP a Raw PCM (16kHz) garantizando respuestas de voz inmediatas con IA.</p>
+          <h3 data-i18n="feat.latency">Baja Latencia</h3>
+          <p data-i18n="feat.latency_desc">Transcodificación en caliente de Opus RTP a Raw PCM (16kHz) garantizando respuestas de voz inmediatas con IA.</p>
         </div>
         <div class="glass-card feat-card">
           <i class="fa-solid fa-code text-violet icon-large"></i>
-          <h3>100% Modificable</h3>
-          <p>Código Node.js modular sin ofuscación ni dependencias innecesarias, con comentarios detallados en español.</p>
+          <h3 data-i18n="feat.modifiable">100% Modificable</h3>
+          <p data-i18n="feat.modifiable_desc">Código Node.js modular sin ofuscación ni dependencias innecesarias, con documentación bilingüe.</p>
         </div>
       </div>
     </section>
 
     <!-- 4. GUÍA DE CONFIGURACIÓN INTERACTIVA -->
     <section id="guide" class="guide-section glass-card">
-      <h2><i class="fa-solid fa-book-open text-violet"></i> Estructura de Integración Rápida</h2>
-      <p>Bypassa meses de investigación de la API de Meta siguiendo este stepper estructural para configurar tu entorno de producción:</p>
+      <h2 data-i18n-html="true" data-i18n="guide.title"><i class="fa-solid fa-book-open text-violet"></i> Estructura de Integración Rápida</h2>
+      <p data-i18n="guide.desc">Bypassa meses de investigación de la API de Meta siguiendo este stepper estructural para configurar tu entorno de producción:</p>
       
       <div class="stepper">
         
         <div class="step-card">
           <div class="step-number">1</div>
-          <h4>Crear App en Meta Developers</h4>
-          <p>
+          <h4 data-i18n="guide.step1">Crear App en Meta Developers</h4>
+          <p data-i18n-html="true" data-i18n="guide.step1_desc">
             Entra a <a href="https://developers.facebook.com/" target="_blank">Meta for Developers</a>, crea una App de tipo <b>Negocios (Business)</b> y agrégale el producto <b>WhatsApp</b>.
           </p>
         </div>
 
         <div class="step-card">
           <div class="step-number">2</div>
-          <h4>Configurar el Webhook en Meta</h4>
-          <p>
+          <h4 data-i18n="guide.step2">Configurar el Webhook en Meta</h4>
+          <p data-i18n-html="true" data-i18n="guide.step2_desc">
             Apunta la URL del Webhook a tu servidor expuesto (ej. mediante Ngrok a <code>http://localhost:3006/webhook</code>). Usa como Verify Token el mismo que guardes en tu base de datos.
           </p>
         </div>
 
         <div class="step-card">
           <div class="step-number">3</div>
-          <h4>Llamar y Conectar en Vivo</h4>
-          <p>
+          <h4 data-i18n="guide.step3">Llamar y Conectar en Vivo</h4>
+          <p data-i18n-html="true" data-i18n="guide.step3_desc">
             Obtén tu **Phone Number ID**, guarda los valores en la Consola y llama directamente al número. El backend capturará la señal e iniciará el puente en tiempo real.
           </p>
         </div>
@@ -170,6 +177,8 @@
 
   </main>
 
+  <!-- Language System -->
+  <script src="lang.js"></script>
   <!-- GENERADOR DE PARTÍCULAS DINÁMICAS (Efecto Antigravity 3D Bokeh) -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {

@@ -1,8 +1,8 @@
 /**
  * geminiLiveBridge.js
- * Conexión en Tiempo Real con IA de Voz (Gemini Live).
- * Mantiene una conexión WebSocket bidireccional continua procesando buffers PCM (16-bit, 16kHz)
- * desde/hacia WhatsApp Calling. Permite transformar comandos de voz en invocación de herramientas (Function Calling).
+ * Real-Time Voice AI Connection (Gemini Live).
+ * Maintains a continuous bidirectional WebSocket connection processing PCM buffers (16-bit, 16kHz)
+ * from/to WhatsApp Calling. Allows transforming voice commands into tool invocation (Function Calling).
  */
 
 const WebSocket = require('ws');
@@ -159,7 +159,12 @@ async function createSession(callId, apiKey, systemPrompt, voice = 'Aoede', onAu
                             }
                             state.modelAudioActiveUntil = Date.now() + BARGE_IN_AI_SPEAKING_WINDOW_MS;
                             const audioBuf = Buffer.from(part.inlineData.data, 'base64');
-                            if (onAudio) onAudio(audioBuf);
+                            if (onAudio) {
+                                console.log(`[GeminiBridge] Calling onAudio for ${callId}, audioBuf.length=${audioBuf.length}, typeof onAudio=${typeof onAudio}`);
+                                onAudio(audioBuf);
+                            } else {
+                                console.log(`[GeminiBridge] onAudio is FALSY for ${callId}, typeof=${typeof onAudio}. state.onAudio=${typeof state.onAudio}`);
+                            }
                         }
                     }
                 }
@@ -202,10 +207,10 @@ async function createSession(callId, apiKey, systemPrompt, voice = 'Aoede', onAu
                     for (const fc of msg.toolCall.functionCalls) {
                         console.log(`[GeminiBridge] Tool call: ${fc.name} (${callId})`);
 
-                        // Soporte nativo para colgar llamada de forma limpia y graciosa
+                        // Native support to end the call cleanly and gracefully
                         if (fc.name === 'end_call') {
                             const whatsappCallManager = require('./whatsappCallManager');
-                            console.log(`[GeminiBridge] Ejecutando colgado nativo por end_call (${callId})`);
+                            console.log(`[GeminiBridge] Executing native hangup via end_call (${callId})`);
                             sendToolResponse(callId, fc.name, fc.id, { success: true });
                             setTimeout(() => {
                                 whatsappCallManager.endCall(callId);
@@ -282,7 +287,7 @@ function sendAudio(callId, pcmBuffer) {
         if (state.onInterrupted) state.onInterrupted();
 
         if (SEND_LOCAL_INTERRUPT_SIGNAL) {
-            _sendRealtimeText(state, '[SISTEMA] El cliente interrumpió. Detén tu respuesta actual y atiende el audio del cliente.');
+            _sendRealtimeText(state, '[SYSTEM] The client interrupted. Stop your current response and attend to the client audio.');
         }
     }
     // --------------------------------------
@@ -369,7 +374,7 @@ function startInitialGreeting(callId) {
     setTimeout(() => {
         const freshState = sessions.get(callId);
         if (freshState?.ws?.readyState === WebSocket.OPEN) {
-            _sendRealtimeText(freshState, '[SISTEMA] La conexión de audio ya está aceptada por WhatsApp. Saluda al cliente según tu SALUDO INICIAL.');
+            _sendRealtimeText(freshState, '[SYSTEM] The audio connection is already accepted by WhatsApp. Greet the client according to your INITIAL GREETING.');
         }
     }, GREETING_DELAY_MS);
     return true;
@@ -402,25 +407,25 @@ function buildVoiceSystemPrompt(botConfig, businessName, welcomeMessage, knowled
     const personality = botConfig?.personality || 'amable y profesional';
 
     const knowledgeSection = knowledgeContext?.trim()
-        ? `\n\nBASE DE CONOCIMIENTO (usa esta información para responder preguntas):\n${knowledgeContext.substring(0, 50000)}`
+        ? `\n\nKNOWLEDGE BASE (use this information to answer questions):\n${knowledgeContext.substring(0, 50000)}`
         : '';
 
-    return `Eres ${name}, el asistente de voz de ${biz}. Estás atendiendo una llamada de WhatsApp.
+    return `You are ${name}, the voice assistant of ${biz}. You are answering a WhatsApp call.
 
-INSTRUCCIONES IMPORTANTES:
-- Habla de forma natural, concisa y amigable. Máximo 2-3 oraciones por respuesta.
-- En llamada, prioriza turnos cortos: pregunta una cosa a la vez y espera la respuesta.
-- Si debes mencionar opciones, nombra máximo 3 opciones y evita leer listas largas.
-- NO uses markdown, asteriscos, listas, ni emojis. Solo texto hablado natural.
-- Si el usuario quiere hablar con un humano, aclara que no puedes transferir la llamada en vivo todavía y ofrece continuar ayudando de forma breve.
-- Si el usuario se despide claramente, llama a end_call.
-- Responde SIEMPRE en el mismo idioma que habla el usuario.
-- SOLO habla de temas relacionados con ${biz}. Si preguntan algo fuera del contexto, redirige amablemente.
+IMPORTANT INSTRUCTIONS:
+- Speak naturally, concisely, and friendly. Maximum 2-3 sentences per response.
+- On a call, prioritize short turns: ask one thing at a time and wait for the answer.
+- If you must mention options, name at most 3 options and avoid reading long lists.
+- Do NOT use markdown, asterisks, lists, or emojis. Only natural spoken text.
+- If the user wants to speak to a human, clarify that you cannot transfer the call live yet and briefly offer to continue helping.
+- If the user clearly says goodbye, call end_call.
+- ALWAYS respond in the same language the user speaks.
+- ONLY talk about topics related to ${biz}. If asked something out of context, redirect politely.
 
-PERSONALIDAD: ${personality}${knowledgeSection}
+PERSONALITY: ${personality}${knowledgeSection}
 
-SALUDO INICIAL:
-${welcomeMessage || `Hola, hablas con ${name} de ${biz}. ¿En qué puedo ayudarte?`}`;
+INITIAL GREETING:
+${welcomeMessage || `Hello, you are speaking with ${name} from ${biz}. How can I help you?`}`;
 }
 
 function setOnInterrupted(callId, callback) {

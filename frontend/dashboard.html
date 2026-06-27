@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consola — WhatsApp Voice SDK Control Panel</title>
+  <title data-i18n="dashboard.title">Consola — WhatsApp Voice SDK Control Panel</title>
   <!-- Google Fonts Outfit & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,6 +50,11 @@
     .text-red {
       color: var(--neon-red);
     }
+  
+    .outbound-call-section.call-active { border-color: var(--neon-green) !important; box-shadow: 0 0 20px rgba(52,168,83,0.15); transition: all 0.3s; }
+    #outboundStatus { transition: all 0.3s; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+    select#countryCode option { background: #1a1a2e; color: #eee; }
+    .lang-btn.active { opacity: 1 !important; box-shadow: 0 0 8px rgba(26,115,227,0.4); }
   </style>
 </head>
 <body>
@@ -65,21 +70,25 @@
     
     <header class="live-status-container" style="margin-top: 20px;">
       <div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
           <a href="desarrolladores.html" class="back-landing-btn">
-            <i class="fa-solid fa-chevron-left"></i> SDK Developers
+            <i class="fa-solid fa-chevron-left"></i> <span data-i18n="nav.sdk">SDK Developers</span>
           </a>
           <a href="index.html" class="back-landing-btn">
-            <i class="fa-solid fa-chevron-left"></i> Landing B2B
+            <i class="fa-solid fa-chevron-left"></i> <span data-i18n="nav.landing">Landing B2B</span>
           </a>
+          <div style="margin-left: auto; display: flex; gap: 4px; font-size: 0.8rem; font-weight: 700;">
+            <button data-lang-btn="es" class="lang-btn" style="background:var(--accent-blue);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;opacity:0.5;transition:0.2s;">ES</button>
+            <button data-lang-btn="en" class="lang-btn" style="background:var(--accent-blue);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;opacity:0.5;transition:0.2s;">EN</button>
+          </div>
         </div>
-        <h1 style="font-size: 2.2rem; text-align: left; margin: 0; letter-spacing: -0.8px;">Consola de Voz y <span>Depuración</span></h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">
+        <h1 style="font-size: 2.2rem; text-align: left; margin: 0; letter-spacing: -0.8px;" data-i18n="dashboard.heading">Consola de Voz y <span>Depuración</span></h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;" data-i18n="dashboard.subtitle">
           Configura tus tokens de Meta y Google para enlazar llamadas reales de WhatsApp en caliente.
         </p>
       </div>
       <div class="live-badge">
-        <span class="live-pulse"></span> Servidor Escuchando (Puerto 3006)
+        <span class="live-pulse"></span> <span data-i18n="server.listening">Servidor Escuchando (Puerto 3006)</span>
       </div>
     </header>
 
@@ -88,55 +97,55 @@
       
       <!-- Formulario de Configuración Persistente (Igual a la imagen de Luis!) -->
       <div class="glass-card config-form">
-        <h3 class="form-section-title"><i class="fa-solid fa-gear"></i> Credenciales de la API y Gemini</h3>
+        <h3 class="form-section-title" data-i18n="config.title"><i class="fa-solid fa-gear"></i> Credenciales de la API y Gemini</h3>
         
         <div style="background: rgba(37, 211, 102, 0.08); border: 1px dashed rgba(37, 211, 102, 0.3); padding: 14px; border-radius: 12px; margin-bottom: 20px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-          <div style="margin-bottom: 8px;">
+          <div style="margin-bottom: 8px;" data-i18n-html="true" data-i18n="config.security">
             <i class="fa-solid fa-shield-halved" style="color: #25d366;"></i> 
             <strong>Seguridad B2B:</strong> Tu configuración es dinámica y se aislará en nuestro Enrutador Inteligente.
           </div>
           <div style="margin-bottom: 8px;">
             <i class="fa-solid fa-link" style="color: var(--accent-blue);"></i>
-            <strong>URL de Webhook para Meta:</strong><br>
+            <strong data-i18n="config.webhook_url">URL de Webhook para Meta:</strong><br>
             <code id="webhookUrlDisplay" style="user-select: all; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 6px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; display: inline-block; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">http://localhost:3006/webhook</code>
           </div>
           <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <i class="fa-solid fa-stopwatch" style="color: var(--neon-yellow);"></i>
-              <strong>Sesión:</strong> 
+              <strong data-i18n="config.session">Sesión:</strong> 
               <span id="sessionTimer" style="background: rgba(255, 193, 7, 0.1); color: var(--neon-yellow); font-weight: 800; font-family: 'JetBrains Mono', monospace; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 193, 7, 0.3);">--:--</span>
             </div>
             <button id="btnClearConfig" class="btn btn-secondary btn-xs" style="border-radius: 999px; padding: 6px 12px; font-size: 0.78rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--neon-red); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 700; transition: all 0.2s;" type="button">
-              <i class="fa-solid fa-trash-can"></i> Limpiar Sesión
+              <i class="fa-solid fa-trash-can"></i> <span data-i18n="config.clear_session">Limpiar Sesión</span>
             </button>
           </div>
         </div>
         <div class="input-group">
-          <label for="phoneId">Phone Number ID <span class="text-red">*</span></label>
+          <label for="phoneId"><span data-i18n="config.phone_id">Phone Number ID</span> <span class="text-red">*</span></label>
           <div class="input-wrapper">
             <i class="fa-solid fa-phone"></i>
-            <input type="text" id="phoneId" placeholder="1123011100896276">
+            <input type="text" id="phoneId" data-i18n-placeholder="config.phone_placeholder" placeholder="1123011100896276">
           </div>
         </div>
 
         <div class="input-group">
-          <label for="wabaId">WABA ID (opcional)</label>
+          <label for="wabaId"><span data-i18n="config.waba_id">WABA ID (opcional)</span></label>
           <div class="input-wrapper">
             <i class="fa-solid fa-folder-open"></i>
-            <input type="text" id="wabaId" placeholder="2408134146358606">
+            <input type="text" id="wabaId" data-i18n-placeholder="config.waba_placeholder" placeholder="2408134146358606">
           </div>
         </div>
 
         <div class="input-group">
-          <label for="metaToken">Access Token (permanente) <span class="text-red">*</span></label>
+          <label for="metaToken"><span data-i18n="config.access_token">Access Token (permanente)</span> <span class="text-red">*</span></label>
           <div class="input-wrapper">
             <i class="fa-solid fa-key"></i>
-            <input type="password" id="metaToken" placeholder="Escriba o pegue su Access Token de Meta aquí...">
+            <input type="password" id="metaToken" data-i18n-placeholder="config.meta_token_placeholder" placeholder="Escriba o pegue su Access Token de Meta aquí...">
           </div>
         </div>
 
         <div class="input-group">
-          <label for="metaVerify">Meta Webhook Verify Token <span class="text-red">*</span></label>
+          <label for="metaVerify"><span data-i18n="config.verify_token">Meta Webhook Verify Token</span> <span class="text-red">*</span></label>
           <div class="input-wrapper">
             <i class="fa-solid fa-shield-halved"></i>
             <input type="text" id="metaVerify" value="whatsapp_voice_sdk_verify_token">
@@ -144,34 +153,102 @@
         </div>
 
         <div class="input-group">
-          <label for="geminiKey">Gemini Live API Key (AI Studio) <span class="text-red">*</span></label>
+          <label for="geminiKey"><span data-i18n="config.gemini_key">Gemini Live API Key (AI Studio)</span> <span class="text-red">*</span></label>
           <div class="input-wrapper">
             <i class="fa-solid fa-brain"></i>
-            <input type="password" id="geminiKey" placeholder="Tu API Key de Google AI Studio">
+            <input type="password" id="geminiKey" data-i18n-placeholder="config.gemini_placeholder" placeholder="Tu API Key de Google AI Studio">
           </div>
         </div>
 
         <button id="btnConnect" class="btn btn-primary btn-full" style="margin-top: 10px; border-radius: 999px;">
-          <i class="fa-solid fa-floppy-disk"></i> Guardar y Conectar en Caliente
+          <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="config.save">Guardar y Conectar en Caliente</span>
         </button>
       </div>
 
       <!-- Monitor de Logs y Luces de Tráfico Real -->
+      <!-- SECCIÓN DE LLAMADA SALIENTE -->
+      <div class="glass-card outbound-call-section" style="margin-top: 20px;">
+        <h3 class="form-section-title" data-i18n="call.title"><i class="fa-solid fa-phone"></i> Llamada Saliente</h3>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;line-height:1.5;" data-i18n="call.desc">
+          Inicia una llamada desde el sistema a cualquier número de WhatsApp. 
+          El usuario debe haber otorgado permiso previamente (callback_permission_status: ENABLED).
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="input-group" style="flex:0 0 130px;min-width:100px;">
+            <label for="countryCode" data-i18n="call.country">Código de País</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-globe"></i>
+              <select id="countryCode" style="background:transparent;border:none;color:var(--text-main);font-family:'Outfit',sans-serif;width:100%;padding:10px 0;outline:none;cursor:pointer;">
+                <option value="593">+593 Ecuador</option>
+                <option value="1">+1 USA/Canadá</option>
+                <option value="52">+52 México</option>
+                <option value="34">+34 España</option>
+                <option value="57">+57 Colombia</option>
+                <option value="54">+54 Argentina</option>
+                <option value="56">+56 Chile</option>
+                <option value="51">+51 Perú</option>
+                <option value="58">+58 Venezuela</option>
+                <option value="55">+55 Brasil</option>
+                <option value="598">+598 Uruguay</option>
+                <option value="595">+595 Paraguay</option>
+                <option value="591">+591 Bolivia</option>
+                <option value="507">+507 Panamá</option>
+                <option value="506">+506 Costa Rica</option>
+                <option value="503">+503 El Salvador</option>
+                <option value="502">+502 Guatemala</option>
+                <option value="504">+504 Honduras</option>
+                <option value="505">+505 Nicaragua</option>
+                <option value="44">+44 Reino Unido</option>
+                <option value="49">+49 Alemania</option>
+                <option value="33">+33 Francia</option>
+                <option value="39">+39 Italia</option>
+                <option value="351">+351 Portugal</option>
+                <option value="91">+91 India</option>
+                <option value="86">+86 China</option>
+                <option value="81">+81 Japón</option>
+                <option value="82">+82 Corea</option>
+                <option value="61">+61 Australia</option>
+                <option value="971">+971 EAU</option>
+                <option value="966">+966 Arabia Saudita</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group" style="flex:1;min-width:180px;">
+            <label for="outboundPhone"><span data-i18n="call.number">Número WhatsApp</span> <span class="text-red">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-mobile-screen"></i>
+              <input type="tel" id="outboundPhone" placeholder="987654321" style="flex:1;">
+            </div>
+          </div>
+          <button id="btnOutboundCall" class="btn btn-primary" style="border-radius:999px;padding:12px 24px;display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap;">
+            <i class="fa-solid fa-phone"></i> <span data-i18n="call.call_btn">Llamar</span>
+          </button>
+          <button id="btnEndOutboundCall" class="btn btn-secondary" style="border-radius:999px;padding:12px 24px;display:none;align-items:center;gap:8px;font-weight:700;white-space:nowrap;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:var(--neon-red);">
+            <i class="fa-solid fa-phone-slash"></i> <span data-i18n="call.hangup_btn">Colgar</span>
+          </button>
+        </div>
+        <div id="outboundStatus" style="margin-top:10px;font-size:0.82rem;min-height:20px;color:var(--text-muted);">
+          <i class="fa-solid fa-circle" style="font-size:0.5rem;color:var(--text-muted);margin-right:6px;vertical-align:middle;"></i>
+          <span data-i18n="call.ready">Listo para llamar</span>
+        </div>
+      </div>
+
+      
       <div class="terminal-container">
         
         <!-- Luces de Estado de Conexión en Caliente -->
         <div class="status-panel glass-card">
           <div class="status-item">
             <div id="ledMeta" class="led led-red"></div>
-            <span>Meta Webhook</span>
+            <span data-i18n="status.meta">Meta Webhook</span>
           </div>
           <div class="status-item">
             <div id="ledWebRTC" class="led led-red"></div>
-            <span>WebRTC Channel</span>
+            <span data-i18n="status.webrtc">WebRTC Channel</span>
           </div>
           <div class="status-item">
             <div id="ledGemini" class="led led-red"></div>
-            <span>Gemini Live WebSocket</span>
+            <span data-i18n="status.gemini">Gemini Live WebSocket</span>
           </div>
         </div>
 
@@ -183,8 +260,8 @@
               <span class="t-btn yellow"></span>
               <span class="t-btn green"></span>
             </div>
-            <span class="terminal-title">live_logs@whatsapp_voice_sdk:~</span>
-            <div style="font-size: 0.7rem; color: var(--neon-green); font-weight: 700;">
+            <span class="terminal-title" data-i18n="terminal.title">live_logs@whatsapp_voice_sdk:~</span>
+            <div style="font-size: 0.7rem; color: var(--neon-green); font-weight: 700;" data-i18n="terminal.badge">
               <i class="fa-solid fa-satellite-dish"></i> LIVE DEBUGR
             </div>
           </div>
@@ -192,7 +269,7 @@
             <div class="log-line system">
               <span class="t-time">[00:00:00]</span>
               <span class="t-tag">[SYSTEM]</span>
-              <span>Consola depuradora de llamadas iniciada. Esperando enlace con el backend...</span>
+              <span data-i18n="terminal.startup">Consola depuradora de llamadas iniciada. Esperando enlace con el backend...</span>
             </div>
           </div>
         </div>
@@ -204,7 +281,7 @@
     <!-- ASISTENTE DE CONFIGURACIÓN META EN ANCHO COMPLETO -->
     <section class="carousel-container-full" style="margin-top: 40px; margin-bottom: 20px;">
       <div class="glass-card">
-        <h3 class="form-section-title" style="margin-bottom: 20px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+        <h3 class="form-section-title" style="margin-bottom: 20px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;" data-i18n="carousel.title">
           <i class="fa-solid fa-circle-info" style="color: var(--accent-blue);"></i> 
           Asistente de Configuración Meta (Paso a Paso)
         </h3>
@@ -215,7 +292,7 @@
           </div>
           
           <div class="carousel-step-header" style="margin-bottom: 8px;">
-            <span class="step-badge" id="stepBadge">Paso 1 de 8</span>
+            <span class="step-badge" id="stepBadge" data-i18n="carousel.step">Paso 1 de 8</span>
           </div>
           <h4 class="step-title" id="stepTitle" style="font-size: 1.1rem; margin-bottom: 12px; font-weight: 800; color: var(--text-main);">Cargando...</h4>
 
@@ -225,10 +302,10 @@
 
           <div class="carousel-navigation" style="margin-top: 20px;">
             <button class="btn btn-secondary btn-xs" id="btnPrevStep" type="button" disabled>
-              <i class="fa-solid fa-chevron-left"></i> Anterior
+              <i class="fa-solid fa-chevron-left"></i> <span data-i18n="carousel.prev">Anterior</span>
             </button>
             <button class="btn btn-primary btn-xs" id="btnNextStep" type="button">
-              Siguiente <i class="fa-solid fa-chevron-right"></i>
+              <span data-i18n="carousel.next">Siguiente</span> <i class="fa-solid fa-chevron-right"></i>
             </button>
           </div>
         </div>
@@ -240,57 +317,57 @@
       
       <!-- Tarjeta 1: Requisitos previos de Meta (Verbatim) -->
       <div class="glass-card" style="display: flex; flex-direction: column; gap: 10px;">
-        <h3 class="form-section-title" style="font-size: 1.15rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <h3 class="form-section-title" style="font-size: 1.15rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; margin-bottom: 8px;" data-i18n="req.title">
           <i class="fa-solid fa-list-check" style="color: var(--accent-purple);"></i>
           Paso 1: Requisitos previos
         </h3>
-        <p style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 12px;">
+        <p style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 12px;" data-i18n="req.intro">
           Antes de empezar con la API de llamadas, asegúrate de lo siguiente:
         </p>
         
         <ul class="requirements-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px;">
           <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
             <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              Tu número de empresa se usa con la <strong>API de la nube</strong> (no con la aplicación de WhatsApp Business tradicional).
-              <div style="margin-top: 8px; font-size: 0.82rem; background: rgba(255, 193, 7, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px dashed rgba(255, 193, 7, 0.3); color: var(--text-muted); line-height: 1.5;">
-                <i class="fa-solid fa-triangle-exclamation" style="color: var(--neon-yellow); margin-right: 6px;"></i>
-                <strong style="color: var(--text-main);">Recomendación clave:</strong> Los números con WhatsApp en la nube son los únicos que valen. Se recomienda usar un número nuevo o eliminar sus cuentas de WhatsApp personales/business para migrar a WhatsApp en la nube.
-                <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/migrate-existing-whatsapp-number-to-a-business-account" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; color: var(--accent-blue); font-weight: 700; margin-top: 6px; text-decoration: none; transition: 0.2s;">
-                  Ver Guía de Migración Oficial <i class="fa-solid fa-up-right-from-square" style="font-size: 0.75rem;"></i>
-                </a>
+              <div data-i18n-html="true" data-i18n="req.cloud_api">
+                Tu número de empresa se usa con la <strong>API de la nube</strong> (no con la aplicación de WhatsApp Business tradicional).
+                <div style="margin-top: 8px; font-size: 0.82rem; background: rgba(255, 193, 7, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px dashed rgba(255, 193, 7, 0.3); color: var(--text-muted); line-height: 1.5;" data-i18n-html="true" data-i18n="req.cloud_tip">
+                  <i class="fa-solid fa-triangle-exclamation" style="color: var(--neon-yellow); margin-right: 6px;"></i>
+                  <strong style="color: var(--text-main);">Recomendación clave:</strong> Los números con WhatsApp en la nube son los únicos que valen. Se recomienda usar un número nuevo o eliminar sus cuentas de WhatsApp personales/business para migrar a WhatsApp en la nube.
+                  <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/migrate-existing-whatsapp-number-to-a-business-account" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; color: var(--accent-blue); font-weight: 700; margin-top: 6px; text-decoration: none; transition: 0.2s;" data-i18n-html="true" data-i18n="req.migration_guide">
+                    Ver Guía de Migración Oficial <i class="fa-solid fa-up-right-from-square" style="font-size: 0.75rem;"></i>
+                  </a>
+                </div>
               </div>
-            </div>
-          </li>
-          <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
-            <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              Suscribe tu aplicación al campo de webhook <strong><code>calls</code></strong> (a menos que quieras usar SIP).
-            </div>
-          </li>
-          <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
-            <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              La misma app también debe estar suscrita a la <strong>cuenta de WhatsApp Business</strong> de tu número de teléfono del negocio.
-            </div>
-          </li>
-          <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
-            <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              Esta app debe tener permisos de mensajes (<strong><code>whatsapp_business_messaging</code></strong>) para el número comercial.
-            </div>
-          </li>
-          <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
-            <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              La empresa debe tener un límite de mensajes diario de al menos <strong>2.000 destinatarios únicos</strong>. Más detalles sobre cómo escalar las capacidades de tu cuenta.
-            </div>
-          </li>
-          <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
-            <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
-            <div>
-              Activar las funciones de llamada en el <strong>número de teléfono de tu negocio</strong>.
-            </div>
+            </li>
+            <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
+              <div data-i18n-html="true" data-i18n="req.subscribe_calls">
+                Suscribe tu aplicación al campo de webhook <strong><code>calls</code></strong> (a menos que quieras usar SIP).
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
+              <div data-i18n-html="true" data-i18n="req.subscribe_waba">
+                La misma app también debe estar suscrita a la <strong>cuenta de WhatsApp Business</strong> de tu número de teléfono del negocio.
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
+              <div data-i18n-html="true" data-i18n="req.permissions">
+                Esta app debe tener permisos de mensajes (<strong><code>whatsapp_business_messaging</code></strong>) para el número comercial.
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
+              <div data-i18n-html="true" data-i18n="req.message_limit">
+                La empresa debe tener un límite de mensajes diario de al menos <strong>2.000 destinatarios únicos</strong>. Más detalles sobre cómo escalar las capacidades de tu cuenta.
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #25d366; margin-top: 3px; font-size: 1rem;"></i>
+              <div data-i18n-html="true" data-i18n="req.enable_calling">
+                Activar las funciones de llamada en el <strong>número de teléfono de tu negocio</strong>.
+              </div>
           </li>
         </ul>
       </div>
@@ -298,43 +375,43 @@
       <!-- Tarjeta 2: Garantía, Documentación y Contacto Directo -->
       <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between; gap: 20px;">
         <div>
-          <h3 class="form-section-title" style="font-size: 1.15rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <h3 class="form-section-title" style="font-size: 1.15rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; margin-bottom: 12px;" data-i18n="info.title">
             <i class="fa-solid fa-shield-halved" style="color: var(--accent-blue);"></i>
             Integración Oficial y Sin Riesgos
           </h3>
           
-          <div class="info-badge-success" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #1e7e34; background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.2); padding: 8px 14px; border-radius: 999px; width: fit-content; margin-bottom: 18px;">
+          <div class="info-badge-success" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #1e7e34; background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.2); padding: 8px 14px; border-radius: 999px; width: fit-content; margin-bottom: 18px;" data-i18n="info.badge">
             <i class="fa-solid fa-shield-check"></i>
             <span>Uso oficial de Meta APIs (0% Riesgo de Baneo o Bloqueos)</span>
           </div>
 
-          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;" data-i18n-html="true" data-i18n="info.body">
             Este sistema se conecta de forma directa a los servidores de Meta mediante las APIs en la nube de WhatsApp y WebRTC corporativas. Al usar canales oficiales y documentados, <strong>no existe ningún riesgo de penalización o suspensión de número</strong> para tu negocio, garantizando máxima estabilidad corporativa.
           </p>
 
           <div class="divider" style="margin-bottom: 20px;"></div>
 
-          <h4 style="font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+          <h4 style="font-size: 0.92rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;" data-i18n="info.docs_title">
             <i class="fa-solid fa-book" style="color: var(--accent-blue);"></i>
             Documentación de Voz de Meta
           </h4>
-          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;" data-i18n="info.docs_desc">
             Acceda a la guía oficial de desarrolladores de Meta para revisar a fondo el protocolo de integración de voz y WebRTC en la nube:
           </p>
-          <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/calling" target="_blank" class="btn btn-secondary btn-xs" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; text-decoration: none; border-radius: 999px; font-weight: 700; width: fit-content; font-size: 0.78rem;">
+          <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/calling" target="_blank" class="btn btn-secondary btn-xs" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; text-decoration: none; border-radius: 999px; font-weight: 700; width: fit-content; font-size: 0.78rem;" data-i18n-html="true" data-i18n="info.docs_btn">
             <i class="fa-solid fa-up-right-from-square"></i> Documentación de Voz de Meta
           </a>
         </div>
 
         <div class="contact-cta-box" style="padding: 20px; background: rgba(37, 211, 102, 0.04); border: 1px dashed rgba(37, 211, 102, 0.3); border-radius: 18px; display: flex; flex-direction: column; gap: 8px; margin-top: auto;">
-          <h4 style="font-size: 0.95rem; font-weight: 800; color: #25d366; margin: 0; display: flex; align-items: center; gap: 8px;">
+          <h4 style="font-size: 0.95rem; font-weight: 800; color: #25d366; margin: 0; display: flex; align-items: center; gap: 8px;" data-i18n="info.demo_title">
             <i class="fa-solid fa-comments"></i>
             ¿Deseas una Demostración Comercial?
           </h4>
-          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin: 0 0 12px 0;">
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin: 0 0 12px 0;" data-i18n="info.demo_desc">
             Si deseas una demostración interactiva en tiempo real o negociar la integración en caliente en tus servidores, ponte en contacto directo por WhatsApp con nuestro equipo.
           </p>
-          <a href="https://wa.me/593987865420" target="_blank" class="btn btn-whatsapp" style="display: flex; justify-content: center; align-items: center; gap: 10px; font-weight: 700; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 999px; border: none; font-size: 0.88rem; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.2); transition: 0.3s ease; cursor: pointer;">
+          <a href="https://wa.me/593987865420" target="_blank" class="btn btn-whatsapp" style="display: flex; justify-content: center; align-items: center; gap: 10px; font-weight: 700; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 999px; border: none; font-size: 0.88rem; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.2); transition: 0.3s ease; cursor: pointer;" data-i18n-html="true" data-i18n="info.demo_btn">
             <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem;"></i> Contactar por WhatsApp
           </a>
         </div>
@@ -347,9 +424,9 @@
       
       <!-- Enlaces de Términos y Políticas -->
       <div class="footer-links" style="display: flex; gap: 18px; justify-content: center; align-items: center; font-size: 0.85rem;">
-        <a href="#" class="footer-link" id="linkTerms" style="color: var(--text-muted); text-decoration: none; transition: 0.2s; font-weight: 600;">Términos y Condiciones</a>
+        <a href="#" class="footer-link" id="linkTerms" style="color: var(--text-muted); text-decoration: none; transition: 0.2s; font-weight: 600;" data-i18n="footer.terms">Términos y Condiciones</a>
         <span style="color: rgba(0, 0, 0, 0.15);">•</span>
-        <a href="#" class="footer-link" id="linkPrivacy" style="color: var(--text-muted); text-decoration: none; transition: 0.2s; font-weight: 600;">Políticas de Privacidad</a>
+        <a href="#" class="footer-link" id="linkPrivacy" style="color: var(--text-muted); text-decoration: none; transition: 0.2s; font-weight: 600;" data-i18n="footer.privacy">Políticas de Privacidad</a>
       </div>
 
       <!-- Botones de Redes Sociales Corporativas -->
@@ -366,7 +443,7 @@
       </div>
 
       <div style="max-width: 600px; line-height: 1.6;">
-        <p class="copyright" style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">
+        <p class="copyright" style="font-size: 0.78rem; color: var(--text-muted); margin: 0;" data-i18n-html="true" data-i18n="footer.copyright">
           &copy; 2026 NEURO IA S.A.S. Todos los derechos reservados. Licencia de Distribución Comercial Autorizada.
         </p>
       </div>
@@ -374,6 +451,8 @@
 
   </main>
 
+  <!-- Language System -->
+  <script src="lang.js"></script>
   <!-- Socket.io Client -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="app.js"></script>

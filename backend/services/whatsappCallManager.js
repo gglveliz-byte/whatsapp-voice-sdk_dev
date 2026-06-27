@@ -1,9 +1,9 @@
 /**
  * whatsappCallManager.js
- * Motor de Telefonía WebRTC para WhatsApp Calls.
- * Gestiona conexiones Peer-to-Peer mediante SDP con la API de Graph de Meta.
- * Transcodifica audio Opus/PCM en tiempo real usando node-datachannel y OpusScript
- * para conectar llamadas de voz directamente con Gemini Live.
+ * WebRTC Telephony Engine for WhatsApp Calls.
+ * Manages Peer-to-Peer connections via SDP with Meta's Graph API.
+ * Transcodes Opus/PCM audio in real time using node-datachannel and OpusScript
+ * to connect voice calls directly with Gemini Live.
  */
 
 const axios = require('axios');
@@ -17,8 +17,12 @@ const RTP_PACING_LOOKAHEAD_MS = Math.max(2, Number(process.env.VOICE_RTP_PACING_
 // Active calls: Map<callId, CallState>
 const activeCalls = new Map();
 
+// Pending outbound calls waiting for webhook answer from Meta
+// Map<bizOpaqueCallbackData, { resolve, reject, timeout, callId, pc, phoneNumberId, accessToken, onAudioFromWhatsApp, onCallEnded, callState }>
+const pendingOutboundCalls = new Map();
+
 /**
- * Resuelve la lista de servidores ICE basada en la configuración dinámica de la BD o variables de entorno.
+ * Resolves the ICE server list based on dynamic DB config or environment variables.
  */
 function getIceServers(configIceServers) {
     const raw = configIceServers || process.env.WHATSAPP_CALL_ICE_SERVERS || 'stun:stun.l.google.com:19302';
@@ -97,14 +101,14 @@ async function handleIncomingCall({ callId, offerSdp, phoneNumberId, accessToken
             waiters.forEach(resolve => resolve(false));
             callState.active = false;
 
-            // Cierre explícito de la PeerConnection nativa para evitar fugas de puertos UDP
+            // Explicitly close the native PeerConnection to avoid UDP port leaks
             try {
                 pc.close();
             } catch (e) {
-                console.error(`[WhatsAppCallManager] Error al cerrar PeerConnection (${callId}):`, e.message);
+                console.error(`[WhatsAppCallManager] Error closing PeerConnection (${callId}):`, e.message);
             }
 
-            // Liberación de memoria de los codificadores OpusScript (WASM/C++)
+            // Memory release for OpusScript encoders/decoders (WASM/C++)
             if (callState.decoder) {
                 try { callState.decoder.delete(); } catch (e) {}
             }
@@ -321,10 +325,12 @@ async function metaCallAction(callId, phoneNumberId, accessToken, body) {
         const url = `${META_GRAPH_URL}/${phoneNumberId}/calls`;
         const payload = {
             messaging_product: 'whatsapp',
-            call_id: callId,
+            ...(body.action !== 'connect' ? { call_id: callId } : {}),
             action: body.action,
             ...(body.session ? { session: body.session } : {}),
             ...(body.biz_opaque_callback_data ? { biz_opaque_callback_data: body.biz_opaque_callback_data } : {}),
+            ...(body.to ? { to: body.to } : {}),
+
         };
         const response = await axios.post(url, payload, {
             headers: {
@@ -364,7 +370,7 @@ function endCall(callId) {
         callState.pc.close();
     } catch (e) { /* ignore */ }
 
-    // Liberación de memoria de los codificadores OpusScript (WASM/C++)
+    // Memory release for OpusScript encoders/decoders (WASM/C++)
     if (callState.decoder) {
         try { callState.decoder.delete(); } catch (e) {}
     }
@@ -373,6 +379,12 @@ function endCall(callId) {
     }
 
     activeCalls.delete(callId);
+    if (callState.wacid && callState.wacid !== callId) {
+        activeCalls.delete(callState.wacid);
+    }
+    if (callState.callId && callState.callId !== callId && callState.callId !== callState.wacid) {
+        activeCalls.delete(callState.callId);
+    }
     console.log(`[WhatsAppCallManager] Call ended: ${callId}`);
 }
 
@@ -382,12 +394,16 @@ function scheduleRtpPacing(callState) {
 
     const tick = () => {
         callState.rtpPacingScheduled = false;
-        if (!callState.active || !callState.outTrack) return;
+        if (!callState.active || !callState.outTrack) {
+            console.log(`[WhatsAppCallManager][Outbound] tick SKIP active=${callState.active} outTrack=${!!callState.outTrack} queue=${callState.rtpQueue?.length} (${callState.callId})`);
+            return;
+        }
 
         const now = Date.now();
         while (callState.rtpQueue?.length > 0 && callState.rtpQueue[0].sendAt <= now + 1) {
             const item = callState.rtpQueue.shift();
             try {
+                console.log(`[WhatsAppCallManager][Outbound] sendMessageBinary rtpLen=${item.packet.length} seq=${callState.outboundFramesSent} (${callState.callId})`);
                 callState.outTrack.sendMessageBinary(item.packet);
                 callState.outboundFramesSent++;
                 if (callState.outboundFramesSent === 1) {
@@ -452,7 +468,7 @@ function getPlaybackBacklogMs(callId) {
 }
 
 /**
- * Vacía la cola de audio de reproducción (útil para interrupciones del usuario).
+ * Empties the playback audio queue (useful for user interruptions).
  */
 function clearQueuedAudio(callId) {
     const callState = activeCalls.get(callId);
@@ -541,7 +557,10 @@ async function convertOpusToPcm(opusBuffer, callId) {
 async function convertPcmToOpus(pcmBuffer, callId) {
     try {
         const encoder = getEncoder(callId);
-        if (!encoder) return [];
+        if (!encoder) {
+            console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus: encoder NULL for ${callId}`);
+            return [];
+        }
 
         const pcm48 = Buffer.alloc(pcmBuffer.length * 2);
         for (let i = 0; i < pcmBuffer.length / 2; i++) {
@@ -553,10 +572,16 @@ async function convertPcmToOpus(pcmBuffer, callId) {
         const frames = [];
         for (let offset = 0; offset + 1920 <= pcm48.length; offset += 1920) {
             const frameBuf = pcm48.subarray(offset, offset + 1920);
-            frames.push(encoder.encode(frameBuf, 960));
+            const result = encoder.encode(frameBuf, 960);
+            console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus: encode result type=${typeof result} len=${result?.length} null=${result === null} (${callId})`);
+            if (result && result.length > 0) {
+                frames.push(result);
+            }
         }
+        console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus: pcmLen=${pcmBuffer.length} pcm48Len=${pcm48.length} framesCount=${frames.length} (${callId})`);
         return frames;
     } catch (e) {
+        console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus EXCEPTION: ${e.message} (${callId})`);
         return [];
     }
 }
@@ -568,7 +593,220 @@ function getCallState(callId) {
     return activeCalls.get(callId) || null;
 }
 
+
+/**
+ * Initiate an outbound call to a WhatsApp user (Business-Initiated Call).
+ * Creates a local SDP offer, sends it to Meta, waits for the webhook answer,
+ * then establishes WebRTC and bridges audio to Gemini.
+ *
+ * @param {object} params
+ * @param {string} params.to — The WhatsApp user's phone number (callee)
+ * @param {string} params.phoneNumberId — WhatsApp Business phone number ID
+ * @param {string} params.accessToken — Meta access token
+ * @param {string} params.iceServers — Dynamic ICE servers
+ * @param {Function} params.onAudioFromWhatsApp — callback(pcmBuffer) with decoded audio from callee
+ * @param {Function} params.onCallEnded — callback() when WebRTC disconnects
+ * @param {Function} params.onStatusChange — callback(status) for ringing/accepted/rejected
+ * @returns {Promise<{ sendAudioToWhatsApp: Function, callId: string }>}
+ */
+async function initiateOutboundCall({ to, phoneNumberId, accessToken, iceServers, onAudioFromWhatsApp, onCallEnded, onStatusChange }) {
+    let NodeDataChannel;
+    try {
+        NodeDataChannel = require('node-datachannel');
+    } catch (e) {
+        throw new Error('[WhatsAppCallManager] node-datachannel not installed or failed to load');
+    }
+    const { PeerConnection, Audio } = NodeDataChannel;
+
+    const callId = `out_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const pc = new PeerConnection(`out-${callId}`, {
+        iceServers: getIceServers(iceServers),
+    });
+
+    const audioTrack = new Audio('audio', 'SendRecv');
+    audioTrack.addOpusCodec(111);
+    const localTrack = pc.addTrack(audioTrack);
+    console.log(`[WhatsAppCallManager][Outbound] localTrack=${!!localTrack} dir=${localTrack ? localTrack.direction() : 'N/A'} (${callId})`);
+    const bizOpaqueData = `bic:${callId}`;
+
+    const callState = {
+        pc, callId, phoneNumberId, accessToken, active: true,
+        outTrack: null, accepted: false, connectionState: 'new',
+        webrtcConnected: false, connectionWaiters: [],
+        rtpSeq: 0, rtpTimestamp: 0, rtpSsrc: Math.floor(Math.random() * 0xFFFFFFFF),
+        rtpPayloadType: 111, outboundPcmBuffer: Buffer.alloc(0),
+        outboundFramesSent: 0, nextRtpSendAt: 0,
+        rtpPacingScheduled: false, rtpQueue: [], onCallEnded,
+    };
+    activeCalls.set(callId, callState);
+    if (localTrack) callState.outTrack = localTrack;
+    console.log(`[WhatsAppCallManager][Outbound] outTrack set=${!!callState.outTrack} active=${callState.active} (${callId})`);
+
+    pc.onStateChange((state) => {
+        console.log(`[WhatsAppCallManager][Outbound] ICE state (${callId}): ${state}`);
+        callState.connectionState = state;
+        if (state === 'connected') {
+            callState.webrtcConnected = true;
+            callState.connectionWaiters.splice(0).forEach(r => r(true));
+        }
+        if ((state === 'disconnected' || state === 'failed' || state === 'closed') && callState.active) {
+            callState.connectionWaiters.splice(0).forEach(r => r(false));
+            callState.active = false;
+            try { pc.close(); } catch (e) {}
+            if (callState.decoder) try { callState.decoder.delete(); } catch (e) {}
+            if (callState.encoder) try { callState.encoder.delete(); } catch (e) {}
+            activeCalls.delete(callId);
+            if (onCallEnded) onCallEnded();
+        }
+    });
+
+    pc.onTrack((track) => {
+        console.log(`[WhatsAppCallManager][Outbound] Audio track received (${callId}) dir=${track.direction()}`);
+        if (!callState.outTrack) callState.outTrack = track;
+        track.onMessage((data) => {
+            if (!callState.active) return;
+            const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+            if (buf[1] >= 200 && buf[1] <= 209 || buf.length < 13) return;
+            const cc = buf[0] & 0x0F;
+            const hasExtension = (buf[0] >> 4) & 0x01;
+            let headerLen = 12 + (cc * 4);
+            if (hasExtension && buf.length > headerLen + 4) {
+                const extLen = buf.readUInt16BE(headerLen + 2);
+                headerLen += 4 + (extLen * 4);
+            }
+            if (headerLen >= buf.length) return;
+            const opusPayload = buf.subarray(headerLen);
+            if (opusPayload.length === 0) return;
+            callState.rtpPayloadType = buf[1] & 0x7F;
+            convertOpusToPcm(opusPayload, callId).then((p) => { if (p && p.length > 0 && onAudioFromWhatsApp) onAudioFromWhatsApp(p); }).catch(() => {});
+        });
+    });
+
+    const offerSdp = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('SDP offer timeout')), 10000);
+        pc.onLocalDescription((sdp, type) => {
+            if (type === 'offer') { clearTimeout(timeout); resolve(sdp); }
+        });
+        try { pc.setLocalDescription(); } catch (e) { clearTimeout(timeout); reject(e); }
+    });
+
+    console.log(`[WhatsAppCallManager][Outbound] SDP offer generated for ${to} (${callId})`);
+
+    // Register pending call before sending to Meta
+    let pendingTimeout;
+    const pendingPromise = new Promise((resolve, reject) => {
+        pendingTimeout = setTimeout(() => {
+            pendingOutboundCalls.delete(bizOpaqueData);
+            reject(new Error('Timeout waiting for webhook answer from Meta'));
+        }, 30000);
+        pendingOutboundCalls.set(bizOpaqueData, { resolve, reject, timeout: pendingTimeout, callId, pc, phoneNumberId, accessToken, callState, onAudioFromWhatsApp, onCallEnded });
+    });
+
+    try {
+        await metaCallAction(callId, phoneNumberId, accessToken, {
+            action: 'connect',
+            to: to,
+            session: { sdp_type: 'offer', sdp: offerSdp },
+            biz_opaque_callback_data: bizOpaqueData,
+        });
+    } catch (err) {
+        clearTimeout(pendingTimeout);
+        pendingOutboundCalls.delete(bizOpaqueData);
+        callState.active = false; activeCalls.delete(callId);
+        try { pc.close(); } catch (e) {}
+        throw new Error(`Failed to initiate outbound call: ${err.message}`);
+    }
+
+    if (onStatusChange) onStatusChange('initiated');
+    console.log(`[WhatsAppCallManager][Outbound] Offer sent to Meta for ${to}, waiting for answer...`);
+
+    const answerSdp = await pendingPromise;
+    console.log(`[WhatsAppCallManager][Outbound] Webhook answer received for ${callId}`);
+
+    const cleanAnswer = answerSdp.replace(/a=extmap:.*\\r\\n/g, '');
+    pc.setRemoteDescription(cleanAnswer, 'answer');
+
+    const connected = await waitForWebRtcConnected(callState, 10000);
+    if (connected) {
+        console.log(`[WhatsAppCallManager][Outbound] WebRTC connected (${callId})`);
+        if (onStatusChange) onStatusChange('connected');
+    } else {
+        throw new Error('WebRTC connection timeout');
+    }
+
+    return {
+        callId,
+        sendAudioToWhatsApp: (pcm24kBuffer) => {
+            console.log(`[WhatsAppCallManager][Outbound] sendAudio ENTERED pcmLen=${pcm24kBuffer.length} bufLen=${callState.outboundPcmBuffer.length} active=${callState.active} outTrack=${!!callState.outTrack} (${callId})`);
+            if (!callState.active || !callState.outTrack) {
+                console.log(`[WhatsAppCallManager][Outbound] sendAudio BLOCKED active=${callState.active} outTrack=${!!callState.outTrack} (${callId})`);
+                return;
+            }
+            callState.outboundPcmBuffer = Buffer.concat([callState.outboundPcmBuffer, pcm24kBuffer]);
+            const MIN = 960;
+            let chunksDone = 0;
+            while (callState.outboundPcmBuffer.length >= MIN) {
+                const chunk = callState.outboundPcmBuffer.subarray(0, MIN);
+                callState.outboundPcmBuffer = callState.outboundPcmBuffer.subarray(MIN);
+                chunksDone++;
+                convertPcmToOpus(chunk, callId).then((frames) => {
+                    console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus returned frames=${frames?.length} active=${callState.active} (${callId})`);
+                    if (frames && frames.length > 0 && callState.active) {
+                        for (const opusFrame of frames) {
+                            const rtpPacket = Buffer.alloc(12 + opusFrame.length);
+                            rtpPacket[0] = 0x80;
+                            rtpPacket[1] = callState.rtpPayloadType & 0x7F;
+                            rtpPacket.writeUInt16BE(callState.rtpSeq & 0xFFFF, 2);
+                            callState.rtpSeq++;
+                            rtpPacket.writeUInt32BE(callState.rtpTimestamp & 0xFFFFFFFF, 4);
+                            callState.rtpTimestamp += 960;
+                            rtpPacket.writeUInt32BE(callState.rtpSsrc, 8);
+                            opusFrame.copy(rtpPacket, 12);
+                            const now = Date.now();
+                            if (!callState.nextRtpSendAt || callState.nextRtpSendAt < now) callState.nextRtpSendAt = now + RTP_PACING_LOOKAHEAD_MS;
+                            callState.rtpQueue.push({ packet: rtpPacket, sendAt: callState.nextRtpSendAt });
+                            callState.nextRtpSendAt += 20;
+                            if (callState.rtpQueue.length > MAX_RTP_QUEUE_FRAMES) callState.rtpQueue.splice(0, callState.rtpQueue.length - MAX_RTP_QUEUE_FRAMES);
+                            scheduleRtpPacing(callState);
+                        }
+                    }
+                }).catch((e) => {
+                    console.log(`[WhatsAppCallManager][Outbound] convertPcmToOpus ERROR: ${e.message} (${callId})`);
+                });
+            }
+            console.log(`[WhatsAppCallManager][Outbound] sendAudio processed ${chunksDone} chunks, bufRemaining=${callState.outboundPcmBuffer.length} (${callId})`);
+        },
+    };
+}
+
+function resolvePendingOutboundCall(bizOpaqueData, answerSdp, webhookCallId) {
+    const pending = pendingOutboundCalls.get(bizOpaqueData);
+    if (!pending) {
+        console.warn(`[WhatsAppCallManager] No pending outbound call for bizOpaqueData: ${bizOpaqueData}`);
+        return false;
+    }
+    clearTimeout(pending.timeout);
+    pendingOutboundCalls.delete(bizOpaqueData);
+
+    // Keep the original callId as the primary key in activeCalls — the
+    // Gemini callbacks (sendAudioToWhatsApp) close over the original callId,
+    // and getEncoder() does activeCalls.get(callId). Also add a secondary
+    // key under the real wacid so endCall(wacid) from webhooks can find it.
+    const oldState = activeCalls.get(pending.callId);
+    if (oldState) {
+        oldState.wacid = webhookCallId;
+        activeCalls.set(webhookCallId, oldState);
+    }
+
+    pending.resolve(answerSdp);
+    return true;
+}
+
+
 module.exports = {
+    initiateOutboundCall,
+    resolvePendingOutboundCall,
     handleIncomingCall,
     endCall,
     isCallActive,
